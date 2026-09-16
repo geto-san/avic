@@ -1,0 +1,9 @@
+vendor/
+.env
+.env.local
+logs/*.log
+uploads/*
+!uploads/.gitkeep
+.DS_Store
+*.swp
+*.bak
