@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claim review · AVIC Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/avic.css" />
+    <script src="../../assets/js/mock-data.js" defer></script>
+    <script src="../../assets/js/session.js" defer></script>
+    <script src="../../assets/js/ui.js" defer></script>
+    <script src="../../assets/js/layout.js" defer></script>
+    <script src="../../assets/js/pages-common.js" defer></script>
+    <script src="../../assets/js/pages-adjuster.js" defer></script>
+  </head>
+  <body
+    data-page="review"
+    data-allow="adjuster"
+    data-crumb="Claim review"
+    data-role="adjuster"
+  >
+    <noscript
+      ><div class="noscript">
+        This prototype renders its screens with JavaScript. Enable it to walk
+        through the portal.
+      </div></noscript
+    >
+    <div class="shell">
+      <div class="main">
+        <main class="page">
+          <div class="page__head">
+            <div>
+              <h1 class="mono" id="c-number">—</h1>
+              <div class="sub" id="c-sub"></div>
+            </div>
+            <div class="page__actions">
+              <span id="c-badge"></span> <span id="c-sla"></span>
+            </div>
+          </div>
+
+          <div class="review">
+            <div>
+              <div class="panel">
+                <div class="panel__head"><h2>The claim</h2></div>
+                <div class="panel__body" id="c-facts"></div>
+              </div>
+              <div class="panel">
+                <div class="panel__head">
+                  <h2>Cover checks</h2>
+                  <div class="spacer"></div>
+                  <span class="small muted"
+                    >Run against the policy on file</span
+                  >
+                </div>
+                <div id="c-checks"></div>
+              </div>
+              <div class="panel">
+                <div class="panel__head"><h2>Garage estimate</h2></div>
+                <div class="panel__body" id="c-estimate"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="panel">
+                <div class="panel__head">
+                  <h2>Documents</h2>
+                  <div class="spacer"></div>
+                  <span class="small muted" id="doc-summary"></span>
+                </div>
+                <div class="panel__body">
+                  <div class="viewer">
+                    <div class="viewer__bar">
+                      <span id="v-name"></span><span class="spacer"></span
+                      ><span id="v-verify"></span>
+                    </div>
+                    <div class="viewer__stage" id="stage"></div>
+                    <div class="thumbs" id="thumbs"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="panel__head"><h2>Your decision</h2></div>
+                <div class="panel__body">
+                  <form id="decision">
+                    <input type="hidden" name="decision" />
+                    <div class="choices" style="margin-bottom: 16px">
+                      <div class="choice" data-decision="approve">
+                        <div class="choice__t">Approve</div>
+                        <div class="choice__d">Settle at an amount you set</div>
+                      </div>
+                      <div class="choice" data-decision="reject">
+                        <div class="choice__t">Reject</div>
+                        <div class="choice__d">
+                          Not payable under the policy
+                        </div>
+                      </div>
+                      <div class="choice" data-decision="request_docs">
+                        <div class="choice__t">Ask for documents</div>
+                        <div class="choice__d">
+                          Send it back to the claimant
+                        </div>
+                      </div>
+                      <div class="choice" data-decision="escalate">
+                        <div class="choice__t">Escalate</div>
+                        <div class="choice__d">Refer to an administrator</div>
+                      </div>
+                    </div>
+                    <div class="field hidden" id="amount-field">
+                      <label for="recommended_amount"
+                        >Amount to approve (UGX)</label
+                      >
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        id="recommended_amount"
+                        name="recommended_amount"
+                      />
+                      <div class="hint" id="limit-note"></div>
+                      <div class="err" id="amount-err"></div>
+                    </div>
+                    <div class="field">
+                      <label for="review_notes"
+                        >Notes for the file
+                        <span class="counter" id="note-count"></span
+                      ></label>
+                      <textarea
+                        id="review_notes"
+                        name="review_notes"
+                        maxlength="500"
+                        data-counter
+                        data-counter-target="#note-count"
+                        placeholder="What you checked and why you landed on this decision."
+                      ></textarea>
+                    </div>
+                    <div class="btnrow">
+                      <button class="btn btn--primary" type="submit">
+                        Record decision
+                      </button>
+                      <button
+                        class="btn"
+                        type="button"
+                        data-stub="Assign a garage"
+                      >
+                        Assign a garage
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              <div class="future">
+                <span class="future__tag">Future prospect</span>
+                <h3>Side-by-side fraud signals</h3>
+                <p>
+                  Duplicate-incident detection, repeat-claimant history and
+                  image tampering checks surfaced next to the decision.
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

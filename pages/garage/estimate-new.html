@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quote a job · AVIC Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/avic.css" />
+    <script src="../../assets/js/mock-data.js" defer></script>
+    <script src="../../assets/js/session.js" defer></script>
+    <script src="../../assets/js/ui.js" defer></script>
+    <script src="../../assets/js/layout.js" defer></script>
+    <script src="../../assets/js/pages-common.js" defer></script>
+    <script src="../../assets/js/pages-garage.js" defer></script>
+  </head>
+  <body
+    data-page="estimate-new"
+    data-allow="garage"
+    data-crumb="Quote a job"
+    data-role="garage"
+  >
+    <noscript
+      ><div class="noscript">
+        This prototype renders its screens with JavaScript. Enable it to walk
+        through the portal.
+      </div></noscript
+    >
+    <div class="shell">
+      <div class="main">
+        <main class="page">
+          <div class="page__head">
+            <div>
+              <h1 class="mono" id="c-number">—</h1>
+              <div class="sub" id="c-sub"></div>
+            </div>
+          </div>
+
+          <div id="adj-note"></div>
+
+          <div class="grid grid--wide">
+            <div class="panel">
+              <div class="panel__head"><h2>Your quote</h2></div>
+              <div class="panel__body">
+                <form id="estimate-form" autocomplete="off">
+                  <div class="row3">
+                    <div class="field">
+                      <label for="parts_cost">Parts (UGX)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        id="parts_cost"
+                        name="parts_cost"
+                        data-required
+                      />
+                      <div class="err">Enter a parts figure, or 0.</div>
+                    </div>
+                    <div class="field">
+                      <label for="labor_cost">Labour (UGX)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        id="labor_cost"
+                        name="labor_cost"
+                        data-required
+                      />
+                      <div class="err">Enter a labour figure, or 0.</div>
+                    </div>
+                    <div class="field">
+                      <label for="other_cost">Other (UGX)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        id="other_cost"
+                        name="other_cost"
+                      />
+                    </div>
+                  </div>
+                  <div class="row2">
+                    <div class="field">
+                      <label for="repair_days">Working days needed</label>
+                      <input
+                        type="number"
+                        min="1"
+                        id="repair_days"
+                        name="repair_days"
+                        data-required
+                      />
+                      <div class="err">How long will the repair take?</div>
+                    </div>
+                    <div class="field">
+                      <label>Quote total</label>
+                      <div class="ledger__v mono" id="est-total">
+                        <span class="unit">UGX</span>0
+                      </div>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="breakdown"
+                      >Breakdown of the work
+                      <span class="counter" id="bd-count"></span
+                    ></label>
+                    <textarea
+                      id="breakdown"
+                      name="breakdown"
+                      maxlength="600"
+                      data-counter
+                      data-counter-target="#bd-count"
+                      placeholder="List the panels, parts and labour items this quote covers."
+                    ></textarea>
+                  </div>
+
+                  <div class="field">
+                    <label>Attach the written quote</label>
+                    <div
+                      class="dropzone"
+                      id="dropzone"
+                      tabindex="0"
+                      role="button"
+                      aria-label="Attach quote"
+                    >
+                      <div class="dropzone__t">
+                        Drop the quote here, or press to browse
+                      </div>
+                      <div class="dropzone__d">
+                        PDF or a clear photo of the printed quote
+                      </div>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        hidden
+                      />
+                    </div>
+                    <div class="files" id="filelist"></div>
+                  </div>
+
+                  <div class="btnrow">
+                    <button class="btn btn--primary" type="submit">
+                      Send quote to the adjuster
+                    </button>
+                    <a class="btn" href="work-orders.html">Cancel</a>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div>
+              <div class="panel">
+                <div class="panel__head"><h2>Vehicle and damage</h2></div>
+                <div class="panel__body" id="c-vehicle"></div>
+              </div>
+              <div class="future">
+                <span class="future__tag">Future prospect</span>
+                <h3>Photo markup</h3>
+                <p>
+                  Draw on the damage photos to show the adjuster exactly which
+                  panels each line of the quote covers.
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

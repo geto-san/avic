@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard · AVIC Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/avic.css" />
+    <script src="../../assets/js/mock-data.js" defer></script>
+    <script src="../../assets/js/session.js" defer></script>
+    <script src="../../assets/js/ui.js" defer></script>
+    <script src="../../assets/js/layout.js" defer></script>
+    <script src="../../assets/js/pages-common.js" defer></script>
+    <script src="../../assets/js/pages-adjuster.js" defer></script>
+  </head>
+  <body
+    data-page="dashboard"
+    data-allow="adjuster"
+    data-crumb="Dashboard"
+    data-role="adjuster"
+  >
+    <noscript
+      ><div class="noscript">
+        This prototype renders its screens with JavaScript. Enable it to walk
+        through the portal.
+      </div></noscript
+    >
+    <div class="shell">
+      <div class="main">
+        <main class="page">
+          <div class="page__head">
+            <div>
+              <h1 id="greeting">Your desk</h1>
+              <div class="sub">
+                Claims routed to you, ordered by what is closest to its
+                deadline.
+              </div>
+            </div>
+            <div class="page__actions">
+              <a class="btn btn--primary" href="queue.html">Open the queue</a>
+            </div>
+          </div>
+
+          <div class="ledger">
+            <div class="ledger__cell">
+              <div class="ledger__k">Open claims</div>
+              <div class="ledger__v" id="k-open">0</div>
+              <div class="ledger__n">assigned to you</div>
+            </div>
+            <div class="ledger__cell">
+              <div class="ledger__k">Past deadline</div>
+              <div class="ledger__v" id="k-late">0</div>
+              <div class="ledger__n">breaching the 14-day service level</div>
+            </div>
+            <div class="ledger__cell">
+              <div class="ledger__k">Decided</div>
+              <div class="ledger__v" id="k-decided">0</div>
+              <div class="ledger__n">approved, rejected or paid</div>
+            </div>
+            <div class="ledger__cell">
+              <div class="ledger__k">Open exposure</div>
+              <div class="ledger__v" id="k-exposure">0</div>
+              <div class="ledger__n">claimed, not yet decided</div>
+            </div>
+          </div>
+
+          <div class="grid grid--wide">
+            <div class="panel">
+              <div class="panel__head">
+                <h2>Next up</h2>
+                <div class="spacer"></div>
+                <a class="btn btn--sm" href="queue.html">Full queue</a>
+              </div>
+              <div id="next-up"></div>
+            </div>
+            <div>
+              <div class="panel">
+                <div class="panel__head"><h2>Your caseload by status</h2></div>
+                <div class="panel__body" id="mix"></div>
+              </div>
+              <div class="future">
+                <span class="future__tag">Future prospect</span>
+                <h3>Automatic workload balancing</h3>
+                <p>
+                  New claims will route to whichever adjuster has the lightest
+                  open caseload instead of being assigned by hand.
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

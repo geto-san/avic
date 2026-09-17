@@ -1,9 +1,0 @@
-{
-  "name": "avic/avic-portal",
-  "description": "AVIC Portal - Automated Vehicle Insurance Claims",
-  "type": "project",
-  "license": "MIT",
-  "require": {
-    "php": ">=8.2"
-  }
-}

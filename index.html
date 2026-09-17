@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AVIC Portal</title>
+    <link rel="stylesheet" href="assets/css/avic.css" />
+    <script src="assets/js/mock-data.js" defer></script>
+    <script src="assets/js/session.js" defer></script>
+    <script defer>
+      window.addEventListener("DOMContentLoaded", function () {
+        var s = AVIC.session();
+        location.replace(s ? AVIC.homeFor(s.role) : "pages/auth/login.html");
+      });
+    </script>
+  </head>
+  <body>
+    <div class="noscript">
+      Opening the AVIC Portal…
+      <p><a href="pages/auth/login.html">Continue to sign in</a></p>
+    </div>
+  </body>
+</html>

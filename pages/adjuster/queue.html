@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Review queue · AVIC Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/avic.css" />
+    <script src="../../assets/js/mock-data.js" defer></script>
+    <script src="../../assets/js/session.js" defer></script>
+    <script src="../../assets/js/ui.js" defer></script>
+    <script src="../../assets/js/layout.js" defer></script>
+    <script src="../../assets/js/pages-common.js" defer></script>
+    <script src="../../assets/js/pages-adjuster.js" defer></script>
+  </head>
+  <body
+    data-page="queue"
+    data-allow="adjuster"
+    data-crumb="Review queue"
+    data-role="adjuster"
+  >
+    <noscript
+      ><div class="noscript">
+        This prototype renders its screens with JavaScript. Enable it to walk
+        through the portal.
+      </div></noscript
+    >
+    <div class="shell">
+      <div class="main">
+        <main class="page">
+          <div class="page__head">
+            <div>
+              <h1>Review queue</h1>
+              <div class="sub" id="queue-count"></div>
+            </div>
+          </div>
+          <div class="note note--warn">
+            Rows marked on the left edge are past their service-level deadline.
+            Clear those first.
+          </div>
+          <div class="panel">
+            <div class="filters">
+              <input
+                type="search"
+                id="f-q"
+                placeholder="Search claim number or place"
+                aria-label="Search the queue"
+              />
+              <select id="f-status" aria-label="Filter by status">
+                <option value="">Any status</option>
+                <option value="submitted">Submitted</option>
+                <option value="under_review">Under review</option>
+                <option value="pending_docs">Documents needed</option>
+              </select>
+            </div>
+            <div id="queue-table"></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

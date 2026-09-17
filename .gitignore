@@ -1,9 +1,18 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs and temp files
+*.log
+*.tmp
+
+# PHP build (planned — see docs/porting-to-php.md)
 vendor/
 .env
 .env.local
-logs/*.log
 uploads/*
 !uploads/.gitkeep
-.DS_Store
-*.swp
-*.bak

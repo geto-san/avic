@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Work orders · AVIC Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/avic.css" />
+    <script src="../../assets/js/mock-data.js" defer></script>
+    <script src="../../assets/js/session.js" defer></script>
+    <script src="../../assets/js/ui.js" defer></script>
+    <script src="../../assets/js/layout.js" defer></script>
+    <script src="../../assets/js/pages-common.js" defer></script>
+    <script src="../../assets/js/pages-garage.js" defer></script>
+  </head>
+  <body
+    data-page="work-orders"
+    data-allow="garage"
+    data-crumb="Work orders"
+    data-role="garage"
+  >
+    <noscript
+      ><div class="noscript">
+        This prototype renders its screens with JavaScript. Enable it to walk
+        through the portal.
+      </div></noscript
+    >
+    <div class="shell">
+      <div class="main">
+        <main class="page">
+          <div class="page__head">
+            <div>
+              <h1>Work orders</h1>
+              <div class="sub">Every vehicle assigned to your workshop.</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="filters">
+              <select id="f-state" aria-label="Filter work orders">
+                <option value="">All work orders</option>
+                <option value="quoted">Quote sent</option>
+                <option value="revision_requested">Revision asked for</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+            <div id="wo-table"></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
