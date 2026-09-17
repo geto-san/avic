@@ -1,4 +1,4 @@
-/* AVIC Portal — notifications and profile renderers, shared by all desks. */
+/* AVIC Portal — notification renderer, shared by all desks. */
 
 AVIC.pages = AVIC.pages || {};
 
@@ -34,23 +34,5 @@ AVIC.pages.notifications = function (s) {
     AVIC.notificationsFor(s).forEach(n => n.is_read = 1);
     AVIC.pages.notifications(s);
     UI.toast('All notifications marked read.');
-  };
-};
-
-AVIC.pages.profile = function (s) {
-  const u = AVIC.user(s.id);
-  const f = document.getElementById('profile-form');
-  f.elements.full_name.value = u.full_name;
-  f.elements.email.value = u.email;
-  f.elements.phone.value = u.phone || '';
-  document.getElementById('p-role').textContent = AVIC.roles[u.role].label;
-  document.getElementById('p-uuid').textContent = u.uuid;
-  document.getElementById('p-since').textContent = UI.date(u.created_at);
-  document.getElementById('p-last').textContent = u.last_login ? UI.dateTime(u.last_login) : 'First session';
-
-  f.onsubmit = e => {
-    e.preventDefault();
-    if (!UI.validate(f)) return UI.toast('Fill in the highlighted fields.', 'bad');
-    UI.toast('Profile changes captured — the prototype does not save them.', 'ok');
   };
 };

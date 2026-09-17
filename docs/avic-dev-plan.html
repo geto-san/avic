@@ -711,7 +711,7 @@
 │   ├── <span class="dir">repair_estimates/</span>
 │   └── <span class="dir">misc/</span>
 │
-├── <span class="dir">logs/</span>                 <span class="note"># error.log, audit.log (writable by PHP)</span>
+├── <span class="dir">logs/</span>                 <span class="note"># error.log (writable by PHP)</span>
 ├── <span class="file">composer.json</span>         <span class="note"># PHPMailer, mPDF, vlucas/phpdotenv</span>
 ├── <span class="file">.env.example</span>          <span class="note"># DB_HOST, DB_NAME, MAIL_HOST, etc.</span>
 └── <span class="file">.htaccess</span>             <span class="note"># Deny all, redirect to public/</span>
@@ -749,7 +749,6 @@
 <span class="cm">-- 1. USERS (all roles share one table)</span>
 <span class="kw">CREATE TABLE</span> <span class="cls">users</span> (
     id           INT UNSIGNED <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
-    uuid         CHAR(<span class="num">36</span>) <span class="kw">NOT NULL UNIQUE</span>,
     full_name    VARCHAR(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
     email        VARCHAR(<span class="num">150</span>) <span class="kw">NOT NULL UNIQUE</span>,
     phone        VARCHAR(<span class="num">20</span>),
@@ -913,23 +912,7 @@
     <span class="kw">INDEX</span> idx_user_read (user_id, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-<span class="cm">-- 9. AUDIT LOG</span>
-<span class="kw">CREATE TABLE</span> <span class="cls">audit_log</span> (
-    id          BIGINT UNSIGNED <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
-    user_id     INT UNSIGNED <span class="kw">NULL</span>,
-    action      VARCHAR(<span class="num">100</span>) <span class="kw">NOT NULL</span>,              <span class="cm">-- claim.status_changed</span>
-    entity_type VARCHAR(<span class="num">50</span>),                         <span class="cm">-- claim, user, payout</span>
-    entity_id   INT UNSIGNED,
-    old_value   JSON,
-    new_value   JSON,
-    ip_address  VARCHAR(<span class="num">45</span>),
-    created_at  TIMESTAMP <span class="kw">DEFAULT CURRENT_TIMESTAMP</span>,
-    <span class="kw">INDEX</span> idx_entity (entity_type, entity_id),
-    <span class="kw">INDEX</span> idx_user (user_id),
-    <span class="kw">INDEX</span> idx_created (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-<span class="cm">-- 10. PASSWORD RESET TOKENS</span>
+<span class="cm">-- 9. PASSWORD RESET TOKENS</span>
 <span class="kw">CREATE TABLE</span> <span class="cls">password_resets</span> (
     email      VARCHAR(<span class="num">150</span>) <span class="kw">NOT NULL</span>,
     token      CHAR(<span class="num">64</span>) <span class="kw">NOT NULL</span>,
@@ -938,7 +921,7 @@
     <span class="kw">INDEX</span> idx_email (email), <span class="kw">INDEX</span> idx_token (token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-<span class="cm">-- 11. CLAIM STATUS HISTORY (immutable log)</span>
+<span class="cm">-- 10. CLAIM STATUS HISTORY (immutable log)</span>
 <span class="kw">CREATE TABLE</span> <span class="cls">claim_status_history</span> (
     id         INT UNSIGNED <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
     claim_id   INT UNSIGNED <span class="kw">NOT NULL</span>,
@@ -951,7 +934,7 @@
     <span class="kw">INDEX</span> idx_claim (claim_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-<span class="cm">-- 12. SETTINGS (key-value store for admin config)</span>
+<span class="cm">-- 11. SETTINGS (key-value store for admin config)</span>
 <span class="kw">CREATE TABLE</span> <span class="cls">settings</span> (
     key_name   VARCHAR(<span class="num">80</span>) <span class="kw">PRIMARY KEY</span>,
     value      TEXT,
@@ -996,7 +979,7 @@
         <div class="role-card">
           <span class="role-emoji">🛡️</span>
           <div class="role-name">Admin</div>
-          <div class="role-desc">Full access: user management, all claims, payout processing, system settings, audit logs.</div>
+          <div class="role-desc">Full access: user management, all claims, payout processing, system settings.</div>
         </div>
       </div>
 
@@ -1013,7 +996,6 @@
             <tr><td>Adjuster review</td><td>—</td><td><span class="pill pill-green">Create</span></td><td>—</td><td><span class="pill pill-blue">View</span></td></tr>
             <tr><td>Process payout</td><td>—</td><td>—</td><td>—</td><td><span class="pill pill-green">Yes</span></td></tr>
             <tr><td>User management</td><td>—</td><td>—</td><td>—</td><td><span class="pill pill-green">Full</span></td></tr>
-            <tr><td>Audit log</td><td>—</td><td>—</td><td>—</td><td><span class="pill pill-blue">Read</span></td></tr>
             <tr><td>Settings</td><td>—</td><td>—</td><td>—</td><td><span class="pill pill-green">R/W</span></td></tr>
           </tbody>
         </table>
@@ -1089,7 +1071,6 @@
           <ul>
             <li>KPI cards: open claims, avg resolution days, total payouts this month</li>
             <li>Claims by status (simple bar chart via vanilla JS canvas)</li>
-            <li>Recent activity feed from audit log</li>
             <li>User management (approve pending, suspend, change role)</li>
             <li>Exportable reports as CSV / PDF</li>
           </ul>
@@ -1180,7 +1161,6 @@
             <li>💰 Payouts</li>
             <li>📋 Reports</li>
             <li>⚙️ Settings</li>
-            <li>🔍 Audit Log</li>
           </ul>
         </div>
         <div class="card">
@@ -1499,8 +1479,7 @@ Header always set Referrer-Policy "strict-origin-when-cross-origin"</pre>
         <ul>
           <li><strong>IDOR prevention:</strong> Every resource query includes <code>WHERE id = ? AND user_id = ?</code> for non-admin roles — no sequential ID guessing</li>
           <li><strong>Error handling:</strong> Generic errors shown to users; detailed errors logged to <code>logs/error.log</code> only</li>
-          <li><strong>Audit trail:</strong> Every status change, payout, and document verification writes to <code>audit_log</code> table with user ID, IP, timestamp</li>
-          <li><strong>Environment separation:</strong> DB credentials, mail passwords, and secret keys live in <code>.env</code> (never committed to version control — add to <code>.gitignore</code>)</li>
+                    <li><strong>Environment separation:</strong> DB credentials, mail passwords, and secret keys live in <code>.env</code> (never committed to version control — add to <code>.gitignore</code>)</li>
         </ul>
       </div>
     </div>
@@ -1728,7 +1707,6 @@ php -S localhost:8000 -t public/</pre>
             <li>User management (approve, suspend, role change)</li>
             <li>Payout initiation form, reference number generation</li>
             <li>Payout status tracking and PDF receipt generation (mPDF)</li>
-            <li>Audit log viewer (filterable by user, action, date range)</li>
             <li>CSV export for claims and payout reports</li>
             <li>System settings page (CRUD on settings table)</li>
           </ul>
@@ -1868,11 +1846,11 @@ php -S localhost:8000 -t public/</pre>
         </div>
         <div class="card accent-green">
           <h4>💡 Consider: Webhook / Event System</h4>
-          <p>As claims move through statuses, multiple side-effects trigger (notifications, emails, audit log). Rather than calling these inline in every controller, create a simple EventDispatcher class with listeners. Makes the codebase much cleaner and testable — directly mirrors Laravel Events without the magic.</p>
+          <p>As claims move through statuses, multiple side-effects trigger (notifications, emails). Rather than calling these inline in every controller, create a simple EventDispatcher class with listeners. Makes the codebase much cleaner and testable — directly mirrors Laravel Events without the magic.</p>
         </div>
         <div class="card accent-green">
           <h4>💡 Consider: Admin Impersonation for Support</h4>
-          <p>Allow admin to "view as" any claimant — a one-click login impersonation stored in session. Essential for support and demos. Log every impersonation in audit_log. Exit impersonation returns to admin session cleanly. Laravel Telescope provides this; build a 20-line PHP equivalent.</p>
+          <p>Allow admin to "view as" any claimant — a one-click login impersonation stored in session. Essential for support and demos. Exit impersonation returns to admin session cleanly. Laravel Telescope provides this; build a 20-line PHP equivalent.</p>
         </div>
       </div>
 

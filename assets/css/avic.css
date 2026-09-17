@@ -1,8 +1,8 @@
 /* ============================================================
    AVIC Portal — UI prototype stylesheet
    Light, institutional, ledger-like. Role identity is structural:
-   each role owns an accent that colours the rail, nameplate and
-   row markers so a user can never mistake whose desk they are at.
+   each role owns an accent that colours the rail and row markers
+   so a user can never mistake whose desk they are at.
    ============================================================ */
 
 :root {
@@ -187,35 +187,6 @@ button {
   font-weight: 600;
   font-size: 15px;
   letter-spacing: -0.01em;
-}
-.rail__brandsub {
-  font-size: 11px;
-  color: #7f8e9c;
-}
-
-/* the nameplate is the isolation cue: role band + who you are */
-.nameplate {
-  margin: 14px 14px 10px;
-  border-left: 3px solid var(--role);
-  background: rgba(255, 255, 255, 0.05);
-  padding: 10px 12px;
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
-.nameplate__role {
-  color: #fff;
-  font-weight: 600;
-  font-size: 13px;
-}
-.nameplate__who {
-  font-size: 12px;
-  color: #9daab6;
-  margin-top: 2px;
-}
-.nameplate__id {
-  font-size: 11px;
-  color: #7f8e9c;
-  font-family: var(--mono);
-  margin-top: 4px;
 }
 
 .nav {

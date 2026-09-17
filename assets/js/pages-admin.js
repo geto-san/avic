@@ -21,14 +21,6 @@ Admin.dashboard = function () {
 
   UI.bars('#by-role', Object.keys(AVIC.roles)
     .map(r => ({ k: AVIC.roles[r].label, v: AVIC.users.filter(u => u.role === r).length })));
-
-  document.getElementById('activity').innerHTML = AVIC.audit.slice()
-    .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 6).map(a =>
-    '<div class="notif"><div class="notif__bar"></div><div>' +
-      '<div class="notif__t mono">' + UI.esc(a.action) + '</div>' +
-      '<div class="notif__m">' + UI.esc(AVIC.user(a.user_id) ? AVIC.user(a.user_id).full_name : 'system') +
-        ' · ' + UI.esc(a.entity_type) + ' #' + a.entity_id + '</div>' +
-      '<div class="notif__d">' + UI.dateTime(a.created_at) + '</div></div></div>').join('');
 };
 
 Admin.claims = function () {
@@ -207,27 +199,6 @@ Admin.payouts = function () {
   };
 };
 
-Admin.audit = function () {
-  let q = '', act = '';
-  const t = UI.table('#audit-table', {
-    rows: AVIC.audit.slice(), sortKey: 'created_at',
-    filter: a => (!act || a.action.startsWith(act)) &&
-      (!q || (a.action + ' ' + (AVIC.user(a.user_id) ? AVIC.user(a.user_id).full_name : '') + ' ' + a.entity_type).toLowerCase().includes(q)),
-    cols: [
-      { label: 'When', key: 'created_at', sortable: true, cell: a => UI.dateTime(a.created_at) },
-      { label: 'Who', cell: a => { const u = AVIC.user(a.user_id); return u ? UI.esc(u.full_name) + ' <span class="tag">' + AVIC.roles[u.role].label + '</span>' : 'system'; } },
-      { label: 'Action', key: 'action', sortable: true, cell: a => '<span class="mono">' + UI.esc(a.action) + '</span>' },
-      { label: 'Entity', cell: a => UI.esc(a.entity_type) + ' #' + a.entity_id },
-      { label: 'Change', cell: a => a.old_value || a.new_value
-          ? '<span class="mono small">' + UI.esc(a.old_value == null ? '∅' : a.old_value) + ' → ' + UI.esc(a.new_value == null ? '∅' : a.new_value) + '</span>' : '—' },
-      { label: 'IP', cell: a => '<span class="mono small">' + UI.esc(a.ip_address) + '</span>' }
-    ],
-    emptyTitle: 'No entries match'
-  });
-  document.getElementById('f-q').oninput = e => { q = e.target.value.toLowerCase(); t.redraw(); };
-  document.getElementById('f-action').onchange = e => { act = e.target.value; t.redraw(); };
-};
-
 Admin.settings = function () {
   const f = document.getElementById('settings-form');
   Object.keys(AVIC.settings).forEach(k => { if (f.elements[k]) f.elements[k].value = AVIC.settings[k]; });
@@ -262,9 +233,7 @@ AVIC.boot(function (s) {
     users: Admin.users,
     payouts: Admin.payouts,
     reports: Admin.reports,
-    'audit-log': Admin.audit,
     settings: Admin.settings,
-    notifications: AVIC.pages.notifications,
-    profile: AVIC.pages.profile
+    notifications: AVIC.pages.notifications
   }[document.body.dataset.page] || function () {})(s);
 });

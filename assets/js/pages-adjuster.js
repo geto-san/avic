@@ -222,7 +222,7 @@ Adjuster.review = function (s) {
     if (form.elements.decision.value === 'approve' && +amount.value > pol.coverage_limit)
       return UI.toast('The approved amount cannot exceed the cover limit.', 'bad');
     const words = { approve: 'Approve this claim?', reject: 'Reject this claim?', request_docs: 'Ask for more documents?', escalate: 'Escalate to an administrator?' };
-    UI.confirm(words[form.elements.decision.value], 'The claimant is notified straight away and the decision is written to the audit log.',
+    UI.confirm(words[form.elements.decision.value], 'The claimant is notified straight away and the decision is final.',
       () => {
         const map = { approve: 'approved', reject: 'rejected', request_docs: 'pending_docs', escalate: 'under_review' };
         c.status = map[form.elements.decision.value];
@@ -242,7 +242,6 @@ AVIC.boot(function (s) {
     review: Adjuster.review,
     decided: Adjuster.decided,
     estimates: Adjuster.estimates,
-    notifications: AVIC.pages.notifications,
-    profile: AVIC.pages.profile
+    notifications: AVIC.pages.notifications
   }[document.body.dataset.page] || function () {})(s);
 });

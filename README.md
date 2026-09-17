@@ -60,7 +60,7 @@ This was the main design constraint, so it is enforced in four places rather tha
    hands back the vehicle, plate, damage type and description only — no claimant identity,
    policy number or settlement figure. That projection is what the quoting screen renders.
 
-Each role also carries its own accent colour through the rail, nameplate and chips
+Each role also carries its own accent colour through the rail and chips
 (claimant teal, adjuster indigo, garage orange, administrator crimson), so which desk you
 are at is legible at a glance rather than something you have to remember.
 
@@ -77,13 +77,13 @@ avic-portal-ui/
 ├── pages/
 │   ├── auth/                  login, register, forgot-password, reset-password
 │   ├── claimant/              dashboard, claims, claim-new (wizard), claim-detail,
-│   │                          policies, notifications, profile
+│   │                          policies, notifications
 │   ├── adjuster/              dashboard, queue, review, decided, estimates,
-│   │                          notifications, profile
+│   │                          notifications
 │   ├── garage/                dashboard, work-orders, estimate-new, estimates,
-│   │                          notifications, profile
+│   │                          notifications
 │   ├── admin/                 dashboard, claims, claim-detail, users, payouts,
-│   │                          reports, audit-log, settings, notifications, profile
+│   │                          reports, settings, notifications
 │   └── errors/                403, 404
 ├── assets/
 │   ├── css/avic.css           one stylesheet, light theme, print rules included
@@ -93,7 +93,7 @@ avic-portal-ui/
 │       ├── ui.js              formatting, toasts, modals, tables, dropzone, charts
 │       ├── layout.js          rail and topbar, built from the session's role
 │       ├── pages-*.js         one file per desk
-│       ├── pages-common.js    notifications and profile, shared
+│       ├── pages-common.js    notifications, shared
 │       ├── auth.js            sign-in, registration, password reset
 │       └── errors.js          the 403 and 404 screens
 └── docs/porting-to-php.md     how each piece maps onto the dev plan
@@ -127,7 +127,7 @@ and receipt generation.
 
 ## Tested
 
-All 36 pages were rendered headlessly under each role with no JavaScript errors, and the
+All 32 pages were rendered headlessly under each role with no JavaScript errors, and the
 access matrix was checked case by case (a claimant refused another claimant's claim, an
 adjuster refused a colleague's claim, a garage refused a claim it holds no work order for,
 an administrator allowed everywhere).

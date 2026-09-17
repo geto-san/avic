@@ -22,13 +22,7 @@ AVIC.shell = function (session) {
     '<aside class="rail">' +
       '<div class="rail__brand">' +
         '<div class="rail__mark">AV</div>' +
-        '<div><div class="rail__brandname">AVIC Portal</div>' +
-        '<div class="rail__brandsub">Vehicle insurance claims</div></div>' +
-      '</div>' +
-      '<div class="nameplate">' +
-        '<div class="nameplate__role">' + UI.esc(role.desk) + '</div>' +
-        '<div class="nameplate__who">' + UI.esc(session.name) + '</div>' +
-        '<div class="nameplate__id">' + UI.esc(session.uuid) + '</div>' +
+        '<div class="rail__brandname">AVIC Portal</div>' +
       '</div>' +
       '<nav class="nav" aria-label="' + UI.esc(role.label) + ' navigation">' + groups + '</nav>' +
       '<div class="rail__foot">Prototype build · no live data</div>' +
@@ -93,7 +87,6 @@ AVIC.shell = function (session) {
     menu('<div class="menu menu--sm" data-kind="who">' +
       '<div class="menu__head"><div><h3>' + UI.esc(session.name) + '</h3>' +
       '<div class="tiny muted">' + UI.esc(session.email) + '</div></div></div>' +
-      '<a href="' + dir + 'profile.html">Profile</a>' +
       (session.impersonatedBy ? '<button class="menu__item" id="unimpersonate">Return to my admin account</button>' : '') +
       '<div class="menu__sep"></div>' +
       '<button class="menu__item" id="signout">Sign out</button></div>');

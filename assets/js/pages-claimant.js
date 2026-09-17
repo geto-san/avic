@@ -330,7 +330,6 @@ AVIC.boot(function (s) {
     'claim-detail': Claimant.detail,
     'claim-new': Claimant.wizard,
     policies: Claimant.policies,
-    notifications: AVIC.pages.notifications,
-    profile: AVIC.pages.profile
+    notifications: AVIC.pages.notifications
   }[document.body.dataset.page] || function () {})(s);
 });

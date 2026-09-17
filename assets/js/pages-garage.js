@@ -139,7 +139,6 @@ AVIC.boot(function (s) {
     'work-orders': Garage.workOrders,
     estimates: Garage.estimates,
     'estimate-new': Garage.estimateForm,
-    notifications: AVIC.pages.notifications,
-    profile: AVIC.pages.profile
+    notifications: AVIC.pages.notifications
   }[document.body.dataset.page] || function () {})(s);
 });

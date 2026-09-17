@@ -27,7 +27,7 @@ AVIC.signIn = function (userId, opts) {
   const u = AVIC.user(userId);
   if (!u) return null;
   const s = {
-    id: u.id, uuid: u.uuid, name: u.full_name, email: u.email,
+    id: u.id, name: u.full_name, email: u.email,
     role: u.role, status: u.status,
     signedInAt: new Date().toISOString(),
     impersonatedBy: (opts && opts.impersonatedBy) || null
@@ -86,8 +86,7 @@ AVIC.nav = {
     ]},
     { group: 'Account', items: [
       { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length },
-      { t: 'Policies',      ic: '▦', page: 'policies',      href: 'policies.html' },
-      { t: 'Profile',       ic: '●', page: 'profile',       href: 'profile.html' }
+      { t: 'Policies',      ic: '▦', page: 'policies',      href: 'policies.html' }
     ]}
   ],
   adjuster: [
@@ -98,8 +97,7 @@ AVIC.nav = {
       { t: 'Garage estimates', ic: '▦', page: 'estimates', href: 'estimates.html' }
     ]},
     { group: 'Account', items: [
-      { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length },
-      { t: 'Profile',       ic: '●', page: 'profile',       href: 'profile.html' }
+      { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length }
     ]}
   ],
   garage: [
@@ -109,8 +107,7 @@ AVIC.nav = {
       { t: 'My estimates',ic: '▦', page: 'estimates',   href: 'estimates.html' }
     ]},
     { group: 'Account', items: [
-      { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length },
-      { t: 'Profile',       ic: '●', page: 'profile',       href: 'profile.html' }
+      { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length }
     ]}
   ],
   admin: [
@@ -122,7 +119,6 @@ AVIC.nav = {
     ]},
     { group: 'System', items: [
       { t: 'Reports',   ic: '▤', page: 'reports',   href: 'reports.html' },
-      { t: 'Audit log', ic: '◈', page: 'audit-log', href: 'audit-log.html' },
       { t: 'Settings',  ic: '⚙', page: 'settings',  href: 'settings.html' },
       { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length }
     ]}
