@@ -57,30 +57,6 @@
     };
   }
 
-  /* ---------------- register ---------------- */
-  if (page === 'register') {
-    const form = document.getElementById('register-form');
-    document.querySelectorAll('.choice[data-role]').forEach(ch => ch.onclick = () => {
-      document.querySelectorAll('.choice[data-role]').forEach(x => x.classList.remove('is-on'));
-      ch.classList.add('is-on');
-      form.elements.role.value = ch.dataset.role;
-      document.getElementById('garage-fields').classList.toggle('hidden', ch.dataset.role !== 'garage');
-    });
-
-    form.onsubmit = e => {
-      e.preventDefault();
-      if (!UI.validate(form)) return UI.toast('Fill in the highlighted fields.', 'bad');
-      if (!form.elements.role.value) return UI.toast('Choose whether you are a claimant or a garage.', 'bad');
-      if (form.elements.password.value !== form.elements.password2.value) {
-        form.elements.password2.closest('.field').classList.add('has-error');
-        return UI.toast('The two passwords do not match.', 'bad');
-      }
-      document.getElementById('done').classList.remove('hidden');
-      form.closest('.panel').classList.add('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-  }
-
   /* ---------------- forgot / reset ---------------- */
   if (page === 'forgot-password') {
     const form = document.getElementById('forgot-form');

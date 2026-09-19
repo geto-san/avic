@@ -73,12 +73,18 @@ try {
 
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
     $status = $role === 'garage' ? 'pending' : 'active';
+    $uuid = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+        random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff),
+        random_int(0, 0x0fff) | 0x4000,
+        random_int(0, 0x3fff) | 0x8000,
+        random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff));
 
     $insert = $conn->prepare(
-        'INSERT INTO users (role, full_name, email, phone, password_hash, garage_address, trading_licence, status)
-         VALUES (:role, :full_name, :email, :phone, :password_hash, :garage_address, :trading_licence, :status)'
+        'INSERT INTO users (uuid, role, full_name, email, phone, password_hash, garage_address, trading_licence, status)
+         VALUES (:uuid, :role, :full_name, :email, :phone, :password_hash, :garage_address, :trading_licence, :status)'
     );
     $insert->execute([
+        'uuid'            => $uuid,
         'role'            => $role,
         'full_name'       => $fullName,
         'email'           => $email,

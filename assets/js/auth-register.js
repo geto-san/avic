@@ -1,22 +1,33 @@
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('register-form');
-  const roleInput = form.querySelector('input[name="role"]');
+  if (!form) return;
+
+  const roleInput = form.elements.role;
   const garageFields = document.getElementById('garage-fields');
   const doneSection = document.getElementById('done');
 
-  document.querySelectorAll('.choice').forEach(choice => {
-    choice.addEventListener('click', () => {
-      document.querySelectorAll('.choice').forEach(c => c.classList.remove('choice--active'));
-      choice.classList.add('choice--active');
-      roleInput.value = choice.dataset.role;
-      garageFields.classList.toggle('hidden', choice.dataset.role !== 'garage');
+  document.querySelectorAll('.choice[data-role]').forEach(ch => {
+    ch.addEventListener('click', () => {
+      document.querySelectorAll('.choice[data-role]').forEach(x => x.classList.remove('is-on'));
+      ch.classList.add('is-on');
+      roleInput.value = ch.dataset.role;
+      garageFields.classList.toggle('hidden', ch.dataset.role !== 'garage');
     });
   });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    clearFieldErrors(form);
-    if (!validateForm(form)) return;
+    
+    if (!UI.validate(form)) return UI.toast('Fill in the highlighted fields.', 'bad');
+    if (!roleInput.value) return UI.toast('Choose whether you are a claimant or a garage.', 'bad');
+    if (form.elements.password.value.length < 8) {
+      form.elements.password.closest('.field').classList.add('has-error');
+      return UI.toast('Password must be at least 8 characters.', 'bad');
+    }
+    if (form.elements.password.value !== form.elements.password2.value) {
+      form.elements.password2.closest('.field').classList.add('has-error');
+      return UI.toast('The two passwords do not match.', 'bad');
+    }
 
     const submitBtn = form.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
@@ -24,17 +35,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const payload = {
       role: roleInput.value,
-      full_name: form.full_name.value.trim(),
-      email: form.email.value.trim(),
-      phone: form.phone.value.trim(),
-      password: form.password.value,
-      password2: form.password2.value,
-      garage_address: form.garage_address ? form.garage_address.value.trim() : null,
-      trading_licence: form.trading_licence ? form.trading_licence.value.trim() : null,
+      full_name: form.elements.full_name.value.trim(),
+      email: form.elements.email.value.trim(),
+      phone: form.elements.phone.value.trim(),
+      password: form.elements.password.value,
+      password2: form.elements.password2.value,
+      garage_address: form.elements.garage_address ? form.elements.garage_address.value.trim() : null,
+      trading_licence: form.elements.trading_licence ? form.elements.trading_licence.value.trim() : null,
     };
 
     try {
-      const res = await fetch('../../api/register.php', {
+      const res = await fetch('../../config/auth/register.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -42,51 +53,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       if (!res.ok) {
-        showServerErrors(form, data);
+        if (data.errors) {
+          Object.entries(data.errors).forEach(([name, msg]) => {
+            const field = form.elements[name];
+            if (field) field.closest('.field')?.classList.add('has-error');
+          });
+        }
+        UI.toast(data.message || 'Could not create account.', 'bad');
         return;
       }
-      form.closest('.panel').classList.add('hidden');
+
       doneSection.classList.remove('hidden');
-    } catch {
-      alert('Network error — please try again.');
+      form.closest('.panel').classList.add('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      UI.toast('Network error — please try again.', 'bad');
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Create account';
     }
   });
 });
-
-function validateForm(form) {
-  let valid = true;
-
-  if (!form.role.value) valid = false;
-
-  form.querySelectorAll('[data-required]').forEach(field => {
-    if (!field.value.trim()) { setFieldError(field, true); valid = false; }
-  });
-
-  if (form.email.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.value)) {
-    setFieldError(form.email, true); valid = false;
-  }
-  if (form.password.value.length < 8) { setFieldError(form.password, true); valid = false; }
-  if (form.password.value !== form.password2.value) { setFieldError(form.password2, true); valid = false; }
-  if (!form.terms.checked) valid = false;
-
-  return valid;
-}
-
-function setFieldError(field, hasError) {
-  field.closest('.field')?.classList.toggle('field--invalid', hasError);
-}
-function clearFieldErrors(form) {
-  form.querySelectorAll('.field').forEach(f => f.classList.remove('field--invalid'));
-}
-function showServerErrors(form, data) {
-  if (data.errors) {
-    Object.entries(data.errors).forEach(([name, msg]) => {
-      const field = form.querySelector(`[name="${name}"]`);
-      if (field) setFieldError(field, true);
-    });
-  }
-  alert(data.message || 'Could not create account.');
-}
