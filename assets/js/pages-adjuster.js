@@ -1,5 +1,5 @@
 /* ============================================================
-   AVIC Portal — adjuster desk
+   AVIC — adjuster desk
    An adjuster sees only claims where adjuster_id matches their
    own id. Claims belonging to a colleague are not listed and
    cannot be opened by id.
@@ -225,10 +225,10 @@ Adjuster.review = function (s) {
     if (!form.elements.decision.value) return UI.toast('Choose a decision first.', 'bad');
     if (form.elements.decision.value === 'approve' && +amount.value > pol.coverage_limit)
       return UI.toast('The approved amount cannot exceed the cover limit.', 'bad');
-    const words = { approve: 'Approve this claim?', reject: 'Reject this claim?', request_docs: 'Ask for more documents?', escalate: 'Escalate to an administrator?' };
+    const words = { approve: 'Approve this claim?', reject: 'Reject this claim?', request_docs: 'Ask for more documents?' };
     UI.confirm(words[form.elements.decision.value], 'The claimant is notified straight away and the decision is written to the audit log.',
       () => {
-        const map = { approve: 'approved', reject: 'rejected', request_docs: 'pending_docs', escalate: 'under_review' };
+        const map = { approve: 'approved', reject: 'rejected', request_docs: 'pending_docs' };
         c.status = map[form.elements.decision.value];
         if (form.elements.decision.value === 'approve') c.approved_amount = +amount.value;
         UI.toast('Decision recorded in the prototype.', 'ok');
@@ -246,7 +246,6 @@ AVIC.boot(function (s) {
     review: Adjuster.review,
     decided: Adjuster.decided,
     estimates: Adjuster.estimates,
-    notifications: AVIC.pages.notifications,
-    profile: AVIC.pages.profile
+    notifications: AVIC.pages.notifications
   }[document.body.dataset.page] || function () {})(s);
 });

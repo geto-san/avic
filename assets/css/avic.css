@@ -1,8 +1,8 @@
 /* ============================================================
-   AVIC Portal — UI prototype stylesheet
+   AVIC — UI prototype stylesheet
    Light, institutional, ledger-like. Role identity is structural:
-   each role owns an accent that colours the rail, nameplate and
-   row markers so a user can never mistake whose desk they are at.
+   each role owns an accent that colours the rail and row markers so
+   a user can never mistake whose desk they are at.
    ============================================================ */
 
 :root {
@@ -44,7 +44,6 @@
 [data-role="claimant"] { --role:#0f6e64; --role-dark:#0a514a; --role-wash:#e7f2f0; }
 [data-role="adjuster"] { --role:#2f4b9b; --role-dark:#233a78; --role-wash:#e9edf7; }
 [data-role="garage"]   { --role:#b4621a; --role-dark:#8c4b12; --role-wash:#faefe4; }
-[data-role="admin"]    { --role:#8c2138; --role-dark:#6d1a2c; --role-wash:#f8e9ec; }
 
 /* ---------- reset ---------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -107,18 +106,6 @@ button { font: inherit; }
 .rail__brandname { color:#fff; font-weight:600; font-size:15px; letter-spacing:-0.01em; }
 .rail__brandsub { font-size:11px; color:#7f8e9c; }
 
-/* the nameplate is the isolation cue: role band + who you are */
-.nameplate {
-  margin: 14px 14px 10px;
-  border-left: 3px solid var(--role);
-  background: rgba(255,255,255,.05);
-  padding: 10px 12px;
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
-.nameplate__role { color: #fff; font-weight:600; font-size:13px; }
-.nameplate__who  { font-size:12px; color:#9daab6; margin-top:2px; }
-.nameplate__id   { font-size:11px; color:#7f8e9c; font-family: var(--mono); margin-top:4px; }
-
 .nav { padding: 4px 10px 18px; overflow-y:auto; flex:1; }
 .nav__group { margin-top: 12px; }
 .nav__title { font-size:11px; color:#6f7d8a; padding: 6px 8px; letter-spacing:.02em; }
@@ -151,17 +138,7 @@ button { font: inherit; }
   padding: 0 22px;
   position: sticky; top:0; z-index: 40;
 }
-.topbar__crumb { font-size:13px; color:var(--muted); }
-.topbar__crumb b { color: var(--ink); font-weight:600; }
 .topbar__spacer { flex:1; }
-
-.rolechip {
-  display:inline-flex; align-items:center; gap:7px;
-  border:1px solid var(--line); border-radius: 100px;
-  padding: 4px 12px 4px 6px; background: var(--role-wash);
-}
-.rolechip__dot { width:8px; height:8px; border-radius:50%; background:var(--role); }
-.rolechip__t { font-size:12px; color: var(--role-dark); font-weight:600; }
 
 .iconbtn {
   position:relative; border:1px solid var(--line); background:var(--surface);
@@ -530,7 +507,7 @@ input[readonly], input[disabled], select[disabled] { background: var(--canvas-2)
 @media (max-width: 760px) {
   .shell { flex-direction: column; }
   .rail { position:static; width:100%; flex:none; height:auto; }
-  .rail.is-collapsed .nav, .rail.is-collapsed .nameplate, .rail.is-collapsed .rail__foot { display:none; }
+  .rail.is-collapsed .nav, .rail.is-collapsed .rail__foot { display:none; }
   .steps { flex-direction: column; }
   .step { border-left:none; border-top:1px solid var(--line-soft); }
   .step:first-child { border-top:none; }

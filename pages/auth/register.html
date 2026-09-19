@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Create an account · AVIC Portal</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<title>Create an account · AVIC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -26,7 +27,7 @@
       </div>
     </div>
     <h1>Hello, let's get you set up.</h1>
-    <!-- <p class="lede">Claimants register against an existing policy. Garages register their workshop and are activated by an administrator before they can quote.</p> -->
+    <!-- <p class="lede">Claimants register against an existing policy. Garages register their workshop and can sign in straight away.</p> -->
     <div class="flow">
       <p> Developed by Team AVIC</p>
     </div>
@@ -36,7 +37,7 @@
       <div class="panel hidden" id="done">
         <div class="panel__head"><h2>Account created</h2></div>
         <div class="panel__body">
-          <p>Check your email for the verification link. Garage accounts also need an administrator to approve the workshop before the first sign-in.</p>
+          <p>Check your email for the verification link, then go ahead and sign in.</p>
           <a class="btn btn--primary" href="login.html">Back to sign in</a>
         </div>
       </div>
@@ -52,7 +53,7 @@
                 <div class="choice" data-role="claimant"><div class="choice__t">Claimant</div><div class="choice__d">I hold a policy</div></div>
                 <div class="choice" data-role="garage"><div class="choice__t">Garage</div><div class="choice__d">I repair vehicles</div></div>
               </div>
-              <!-- <div class="hint">Adjuster and administrator accounts are created internally.</div> -->
+              <!-- <div class="hint">Adjuster accounts are created internally.</div> -->
             </div>
             <div class="field"><label for="full_name">Full name or workshop name</label>
               <input type="text" id="full_name" name="full_name" data-required>
@@ -81,7 +82,7 @@
             </div>
             <div class="check">
               <input type="checkbox" id="terms" name="terms" required>
-              <label for="terms">I accept the portal terms and the privacy notice.</label>
+              <label for="terms">I accept the terms and the privacy notice.</label>
             </div>
             <button class="btn btn--primary btn--block" type="submit">Create account</button>
           </form>

@@ -1,5 +1,5 @@
 /* ============================================================
-   AVIC Portal — claimant desk
+   AVIC — claimant desk
    A claimant only ever reads AVIC.claimsFor(session), which is
    filtered on user_id. Opening someone else's claim id lands on
    the 403 screen.
@@ -334,7 +334,6 @@ AVIC.boot(function (s) {
     'claim-detail': Claimant.detail,
     'claim-new': Claimant.wizard,
     policies: Claimant.policies,
-    notifications: AVIC.pages.notifications,
-    profile: AVIC.pages.profile
+    notifications: AVIC.pages.notifications
   }[document.body.dataset.page] || function () {})(s);
 });

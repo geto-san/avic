@@ -1,5 +1,5 @@
 /* ============================================================
-   AVIC Portal — shared UI helpers
+   AVIC — shared UI helpers
    Formatting, badges, toasts, confirm dialogs, sortable tables,
    character counters, drag-and-drop preview, tiny bar charts.
    ============================================================ */

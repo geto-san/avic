@@ -1,6 +1,6 @@
 /* ============================================================
-   AVIC Portal — mock session + role guard
-   The real portal keeps this state in a PHP session. Here it
+   AVIC — mock session + role guard
+   The real keeps this state in a PHP session. Here it
    lives in sessionStorage, which is per browser tab: open two
    tabs and you can sit at two different desks at once without
    the roles bleeding into each other.
@@ -41,8 +41,23 @@ AVIC.signIn = function (userId, opts) {
   return s;
 };
 
+/* Real login: the server already holds the session in a PHP cookie;
+   this mirrors that user back into the app's sessionStorage so the
+   prototype's role guards and nav work exactly as before. */
+AVIC.startServerSession = function (u, opts) {
+  const s = {
+    id: u.id, uuid: u.uuid, name: u.full_name, email: u.email,
+    role: u.role, status: u.status,
+    signedInAt: new Date().toISOString(),
+    impersonatedBy: (opts && opts.impersonatedBy) || null
+  };
+  try { sessionStorage.setItem(AVIC.KEY, JSON.stringify(s)); } catch (e) {}
+  return s;
+};
+
 AVIC.signOut = function () {
-  try { sessionStorage.removeItem(AVIC.KEY); sessionStorage.removeItem('avic.draft'); } catch (e) {}
+  try { fetch(AVIC.url('config/auth/logout.php'), { method: 'POST', keepalive: true }).catch(() => {}); } catch (e) {}
+  try { sessionStorage.removeItem(AVIC.KEY); sessionStorage.removeItem('avic.draft'); sessionStorage.removeItem('avic.intended'); } catch (e) {}
   location.href = AVIC.url('pages/auth/login.html');
 };
 
@@ -91,8 +106,7 @@ AVIC.nav = {
     ]},
     { group: 'Account', items: [
       { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length },
-      { t: 'Policies',      ic: '▦', page: 'policies',      href: 'policies.html' },
-      { t: 'Profile',       ic: '●', page: 'profile',       href: 'profile.html' }
+      { t: 'Policies',      ic: '▦', page: 'policies',      href: 'policies.html' }
     ]}
   ],
   adjuster: [
@@ -103,8 +117,7 @@ AVIC.nav = {
       { t: 'Garage estimates', ic: '▦', page: 'estimates', href: 'estimates.html' }
     ]},
     { group: 'Account', items: [
-      { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length },
-      { t: 'Profile',       ic: '●', page: 'profile',       href: 'profile.html' }
+      { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length }
     ]}
   ],
   garage: [
@@ -114,21 +127,6 @@ AVIC.nav = {
       { t: 'My estimates',ic: '▦', page: 'estimates',   href: 'estimates.html' }
     ]},
     { group: 'Account', items: [
-      { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length },
-      { t: 'Profile',       ic: '●', page: 'profile',       href: 'profile.html' }
-    ]}
-  ],
-  admin: [
-    { group: 'Oversight', items: [
-      { t: 'Dashboard',  ic: '▤', page: 'dashboard', href: 'dashboard.html' },
-      { t: 'All claims', ic: '▥', page: 'claims',    href: 'claims.html' },
-      { t: 'Payouts',    ic: '▦', page: 'payouts',   href: 'payouts.html', count: () => AVIC.payouts.filter(p => p.status !== 'completed').length },
-      { t: 'Users',      ic: '●', page: 'users',     href: 'users.html', count: () => AVIC.users.filter(u => u.status === 'pending').length }
-    ]},
-    { group: 'System', items: [
-      { t: 'Reports',   ic: '▤', page: 'reports',   href: 'reports.html' },
-      { t: 'Audit log', ic: '◈', page: 'audit-log', href: 'audit-log.html' },
-      { t: 'Settings',  ic: '⚙', page: 'settings',  href: 'settings.html' },
       { t: 'Notifications', ic: '◉', page: 'notifications', href: 'notifications.html', count: s => AVIC.notificationsFor(s).filter(n => !n.is_read).length }
     ]}
   ]

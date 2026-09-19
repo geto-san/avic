@@ -1,62 +1,6 @@
 (function () {
   const page = document.body.dataset.page;
 
-  /* ---------------- login ---------------- */
-  if (page === 'login') {
-    /* already signed in? go straight to that desk */
-    const live = AVIC.session();
-    if (live && !UI.qs('reason')) location.replace(AVIC.homeFor(live.role));
-
-    if (!AVIC.storageOk) {
-      document.getElementById('reason').innerHTML =
-        '<div class="note note--stop">This browser will not keep a session for pages opened straight from a folder. ' +
-        'Serve the folder over a local web server — <span class="mono">python3 -m http.server</span> in the project root, ' +
-        'or drop it in your XAMPP <span class="mono">htdocs</span> — then open it through <span class="mono">localhost</span>.</div>';
-    }
-
-    const reason = UI.qs('reason');
-    if (reason === 'signin') {
-      document.getElementById('reason').innerHTML =
-        '<div class="note note--warn">Sign in to open that page.</div>';
-    }
-
-    /* demo desks */
-    const demos = [1].map(AVIC.user);
-    document.getElementById('demo-users').innerHTML = demos.map(u =>
-      '<button class="demo-user" data-id="' + u.id + '" style="--pill:' + AVIC.roles[u.role].accent + '">' +
-        '<span class="demo-user__dot"></span>' +
-        '<span><span class="demo-user__t">' + UI.esc(AVIC.roles[u.role].label) + '</span>' +
-        '<span class="demo-user__d"> · ' + UI.esc(u.full_name) + '</span></span>' +
-        '<span class="demo-user__go">Open</span>' +
-      '</button>').join('');
-
-    document.querySelectorAll('.demo-user').forEach(b => b.onclick = () => {
-      const s = AVIC.signIn(+b.dataset.id);
-      location.href = AVIC.homeFor(s.role);
-    });
-
-    const form = document.getElementById('login-form');
-    form.onsubmit = e => {
-      e.preventDefault();
-      if (!UI.validate(form)) return;
-      const u = AVIC.users.find(x => x.email.toLowerCase() === form.elements.email.value.trim().toLowerCase());
-      if (!u) {
-        document.getElementById('reason').innerHTML =
-          '<div class="note note--stop">No account uses that email. Try one of the demo desks below.</div>';
-        return;
-      }
-      if (u.status !== 'active') {
-        document.getElementById('reason').innerHTML =
-          '<div class="note note--stop">This account is ' + u.status + '. An administrator has to activate it before you can sign in.</div>';
-        return;
-      }
-      const s = AVIC.signIn(u.id);
-      const intended = sessionStorage.getItem('avic.intended');
-      sessionStorage.removeItem('avic.intended');
-      location.href = intended || AVIC.homeFor(s.role);
-    };
-  }
-
   /* ---------------- forgot / reset ---------------- */
   if (page === 'forgot-password') {
     const form = document.getElementById('forgot-form');

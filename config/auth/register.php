@@ -72,7 +72,7 @@ try {
     }
 
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-    $status = $role === 'garage' ? 'pending' : 'active';
+    $status = 'active';
     $uuid = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
         random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff),
         random_int(0, 0x0fff) | 0x4000,

@@ -1,5 +1,5 @@
 /* ============================================================
-   AVIC Portal — 403 and 404 screens
+   AVIC — 403 and 404 screens
    The 403 names both desks so the person understands what
    happened rather than seeing a bare error code.
    ============================================================ */
@@ -27,11 +27,11 @@
   if (reason === 'not-yours') {
     text = 'That claim was filed by another policy holder. Claimants can only open claims filed on their own account.';
   } else if (reason === 'not-assigned') {
-    text = 'That claim is assigned to a different adjuster. Ask an administrator to reassign it if it should be on your desk.';
+    text = 'That claim is assigned to a different adjuster and cannot be opened from this desk.';
   } else if (reason === 'no-work-order') {
     text = 'Your workshop does not hold a work order for that claim, so its vehicle details are not available to you.';
   } else if (reason === 'status') {
-    text = 'Your account is ' + UI.esc(UI.qs('was') || 'not active') + '. An administrator has to activate it before you can use the portal.';
+    text = 'Your account is ' + UI.esc(UI.qs('was') || 'not active') + ' and cannot be used until it is restored.';
   } else if (you && need) {
     text = 'You are signed in as a ' + nameOf(you).toLowerCase() + '. That page is part of the ' +
       need.split('|').map(nameOf).join(' or ').toLowerCase() + ' desk.';

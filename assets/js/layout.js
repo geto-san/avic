@@ -1,5 +1,5 @@
 /* ============================================================
-   AVIC Portal — app shell
+   AVIC — app shell
    Builds the left rail and topbar from the signed-in role only.
    A role's links come from AVIC.nav[role]; nothing else is ever
    rendered, so there is no hidden markup for another desk.
@@ -25,13 +25,8 @@ AVIC.shell = function (session) {
     '<aside class="rail">' +
       '<div class="rail__brand">' +
         '<div class="rail__mark">AV</div>' +
-        '<div><div class="rail__brandname">AVIC Portal</div>' +
+        '<div><div class="rail__brandname">AVIC</div>' +
         '<div class="rail__brandsub">Vehicle insurance claims</div></div>' +
-      '</div>' +
-      '<div class="nameplate">' +
-        '<div class="nameplate__role">' + UI.esc(role.desk) + '</div>' +
-        '<div class="nameplate__who">' + UI.esc(session.name) + '</div>' +
-        '<div class="nameplate__id">' + UI.esc(session.uuid) + '</div>' +
       '</div>' +
       '<nav class="nav" aria-label="' + UI.esc(role.label) + ' navigation">' + groups + '</nav>' +
       '<div class="rail__foot">Prototype build · no live data</div>' +
@@ -39,13 +34,9 @@ AVIC.shell = function (session) {
 
   /* ---------- topbar ---------- */
   const unread = AVIC.notificationsFor(session).filter(n => !n.is_read).length;
-  const crumb = document.body.dataset.crumb || '';
   const bar =
     '<header class="topbar">' +
-      '<div class="topbar__crumb"><b>' + UI.esc(role.label) + '</b>' + (crumb ? ' · ' + UI.esc(crumb) : '') + '</div>' +
       '<div class="topbar__spacer"></div>' +
-      (session.impersonatedBy ? '<span class="tag tag--role">Viewing as this user</span>' : '') +
-      '<span class="rolechip"><span class="rolechip__dot"></span><span class="rolechip__t">Signed in as ' + UI.esc(role.label) + '</span></span>' +
       '<button class="iconbtn" id="bell" aria-label="Notifications">◉' +
         (unread ? '<span class="dot">' + unread + '</span>' : '') + '</button>' +
       '<button class="avatar" id="who" aria-label="Account menu">' + UI.initials(session.name) + '</button>' +
@@ -96,21 +87,13 @@ AVIC.shell = function (session) {
     menu('<div class="menu menu--sm" data-kind="who">' +
       '<div class="menu__head"><div><h3>' + UI.esc(session.name) + '</h3>' +
       '<div class="tiny muted">' + UI.esc(session.email) + '</div></div></div>' +
-      '<a href="' + dir + 'profile.html">Profile</a>' +
-      (session.impersonatedBy ? '<button class="menu__item" id="unimpersonate">Return to my admin account</button>' : '') +
       '<div class="menu__sep"></div>' +
       '<button class="menu__item" id="signout">Sign out</button></div>');
     const so = document.getElementById('signout');
     if (so) so.onclick = () => AVIC.signOut();
-    const un = document.getElementById('unimpersonate');
-    if (un) un.onclick = () => {
-      const back = session.impersonatedBy;
-      AVIC.signIn(back);
-      location.href = AVIC.homeFor(AVIC.user(back).role);
-    };
   };
 
-  /* notification polling stand-in — the real portal fetches
+  /* notification polling stand-in — the real fetches
      /api/notifications every 30s; here the badge just re-counts. */
   setInterval(() => {
     const b = document.getElementById('bell');
