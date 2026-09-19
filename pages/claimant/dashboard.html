@@ -1,119 +1,76 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dashboard · AVIC Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="../../assets/css/avic.css" />
-    <script src="../../assets/js/mock-data.js" defer></script>
-    <script src="../../assets/js/session.js" defer></script>
-    <script src="../../assets/js/ui.js" defer></script>
-    <script src="../../assets/js/layout.js" defer></script>
-    <script src="../../assets/js/pages-common.js" defer></script>
-    <script src="../../assets/js/pages-claimant.js" defer></script>
-  </head>
-  <body
-    data-page="dashboard"
-    data-allow="claimant"
-    data-crumb="Dashboard"
-    data-role="claimant"
-  >
-    <noscript
-      ><div class="noscript">
-        This prototype renders its screens with JavaScript. Enable it to walk
-        through the portal.
-      </div></noscript
-    >
-    <div class="shell">
-      <div class="main">
-        <main class="page">
-          <div class="page__head">
-            <div>
-              <h1 id="greeting">Hello</h1>
-              <div class="sub">
-                Everything you have with AVIC, in one place.
-              </div>
-            </div>
-            <div class="page__actions">
-              <a class="btn btn--primary" href="claim-new.html">File a claim</a>
-            </div>
-          </div>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · AVIC Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/mock-data.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/pages-claimant.js" defer></script>
+</head>
+<body data-page="dashboard" data-allow="claimant" data-crumb="Dashboard" data-role="claimant">
+<noscript><div class="noscript">This prototype renders its screens with JavaScript. Enable it to walk through the portal.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
 
-          <div class="ledger">
-            <div class="ledger__cell">
-              <div class="ledger__k">Claims in progress</div>
-              <div class="ledger__v" id="k-open">0</div>
-              <div class="ledger__n">awaiting a decision</div>
-            </div>
-            <div class="ledger__cell">
-              <div class="ledger__k">Unfinished drafts</div>
-              <div class="ledger__v" id="k-draft">0</div>
-              <div class="ledger__n">saved but not sent</div>
-            </div>
-            <div class="ledger__cell">
-              <div class="ledger__k">Paid to you</div>
-              <div class="ledger__v" id="k-paid">0</div>
-              <div class="ledger__n">across all settled claims</div>
-            </div>
-            <div class="ledger__cell">
-              <div class="ledger__k">Active policies</div>
-              <div class="ledger__v" id="k-policies">0</div>
-              <div class="ledger__n">vehicles on cover</div>
-            </div>
-          </div>
-
-          <div class="grid grid--wide">
-            <div>
-              <div class="panel" id="active-claim"></div>
-              <div class="panel">
-                <div class="panel__head">
-                  <h2>Recent claims</h2>
-                  <div class="spacer"></div>
-                  <a class="btn btn--sm" href="claims.html">See all</a>
-                </div>
-                <div id="recent"></div>
-              </div>
-            </div>
-            <div>
-              <div class="panel">
-                <div class="panel__head"><h2>What to have ready</h2></div>
-                <div class="panel__body small">
-                  <p>Filing goes faster when you already have these to hand:</p>
-                  <ul
-                    style="padding-left: 18px; margin: 0; color: var(--muted)"
-                  >
-                    <li>Photos of the damage from a few angles</li>
-                    <li>The police report, if the incident was reported</li>
-                    <li>Your policy number</li>
-                    <li>
-                      A repair quote, if a garage has already looked at it
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div class="future">
-                <span class="future__tag">Future prospect</span>
-                <h3>Track your repair</h3>
-                <p>
-                  Once a garage starts work you will see progress updates and a
-                  collection date here.
-                </p>
-                <ul class="future__list">
-                  <li>Live repair stage from the garage bay</li>
-                  <li>SMS updates through Africa's Talking</li>
-                  <li>Courtesy-vehicle booking</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </main>
+      <div class="page__head">
+        <div>
+          <h1 id="greeting">Hello</h1>
+          <div class="sub">Everything you have with AVIC, in one place.</div>
+        </div>
+        <div class="page__actions">
+          <a class="btn btn--primary" href="claim-new.html">File a claim</a>
+        </div>
       </div>
-    </div>
-  </body>
+
+      <div class="ledger">
+        <div class="ledger__cell"><div class="ledger__k">Claims in progress</div><div class="ledger__v" id="k-open">0</div><div class="ledger__n">awaiting a decision</div></div>
+        <div class="ledger__cell"><div class="ledger__k">Unfinished drafts</div><div class="ledger__v" id="k-draft">0</div><div class="ledger__n">saved but not sent</div></div>
+        <div class="ledger__cell"><div class="ledger__k">Paid to you</div><div class="ledger__v" id="k-paid">0</div><div class="ledger__n">across all settled claims</div></div>
+        <div class="ledger__cell"><div class="ledger__k">Active policies</div><div class="ledger__v" id="k-policies">0</div><div class="ledger__n">vehicles on cover</div></div>
+      </div>
+
+      <div class="grid grid--wide">
+        <div>
+          <div class="panel" id="active-claim"></div>
+          <div class="panel">
+            <div class="panel__head"><h2>Recent claims</h2><div class="spacer"></div>
+              <a class="btn btn--sm" href="claims.html">See all</a></div>
+            <div id="recent"></div>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <div class="panel__head"><h2>What to have ready</h2></div>
+            <div class="panel__body small">
+              <p>Filing goes faster when you already have these to hand:</p>
+              <ul style="padding-left:18px;margin:0;color:var(--muted)">
+                <li>Photos of the damage from a few angles</li>
+                <li>The police report, if the incident was reported</li>
+                <li>Your policy number</li>
+                <li>A repair quote, if a garage has already looked at it</li>
+              </ul>
+            </div>
+          </div>
+          <div class="future">
+  <span class="future__tag">Future prospect</span>
+  <h3>Track your repair</h3>
+  <p>Once a garage starts work you will see progress updates and a collection date here.</p>
+  <ul class="future__list"><li>Live repair stage from the garage bay</li><li>SMS updates through Africa's Talking</li><li>Courtesy-vehicle booking</li></ul>
+</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
 </html>

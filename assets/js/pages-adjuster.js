@@ -1,5 +1,9 @@
-/* AVIC Portal — adjuster desk. Only claims whose adjuster_id
-   matches the session are listed or openable. */
+/* ============================================================
+   AVIC Portal — adjuster desk
+   An adjuster sees only claims where adjuster_id matches their
+   own id. Claims belonging to a colleague are not listed and
+   cannot be opened by id.
+   ============================================================ */
 
 const Adjuster = {};
 const OPEN_STATES = ['submitted', 'under_review', 'pending_docs'];
@@ -222,7 +226,7 @@ Adjuster.review = function (s) {
     if (form.elements.decision.value === 'approve' && +amount.value > pol.coverage_limit)
       return UI.toast('The approved amount cannot exceed the cover limit.', 'bad');
     const words = { approve: 'Approve this claim?', reject: 'Reject this claim?', request_docs: 'Ask for more documents?', escalate: 'Escalate to an administrator?' };
-    UI.confirm(words[form.elements.decision.value], 'The claimant is notified straight away and the decision is final.',
+    UI.confirm(words[form.elements.decision.value], 'The claimant is notified straight away and the decision is written to the audit log.',
       () => {
         const map = { approve: 'approved', reject: 'rejected', request_docs: 'pending_docs', escalate: 'under_review' };
         c.status = map[form.elements.decision.value];
@@ -242,6 +246,7 @@ AVIC.boot(function (s) {
     review: Adjuster.review,
     decided: Adjuster.decided,
     estimates: Adjuster.estimates,
-    notifications: AVIC.pages.notifications
+    notifications: AVIC.pages.notifications,
+    profile: AVIC.pages.profile
   }[document.body.dataset.page] || function () {})(s);
 });

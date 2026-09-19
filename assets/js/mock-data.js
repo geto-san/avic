@@ -1,25 +1,26 @@
-/* AVIC Portal — mock dataset.
-   Mirrors the dev-plan schema tables so field names survive the port to PHP. */
+/* ============================================================
+   AVIC Portal — mock dataset
+   Front-end prototype only. Mirrors the schema tables from the
+   dev plan so the same field names survive the port to PHP.
+   Nothing here talks to a server.
+   ============================================================ */
 
 window.AVIC = window.AVIC || {};
 
 AVIC.roles = {
-  claimant: { label: 'Claimant',      accent: '#0f6e64', dir: 'claimant' },
-  adjuster: { label: 'Adjuster',      accent: '#2f4b9b', dir: 'adjuster' },
-  garage:   { label: 'Garage',        accent: '#b4621a', dir: 'garage'   },
-  admin:    { label: 'Administrator', accent: '#8c2138', dir: 'admin'    }
+  claimant: { label: 'Claimant',  desk: 'Claimant workspace',  accent: '#0f6e64', home: 'dashboard.html', dir: 'claimant' }
 };
 
 AVIC.users = [
-  { id: 1, full_name: 'Ahumuza Doreen',  email: 'doreen@example.ug',    phone: '+256 772 114 902', role: 'claimant', status: 'active',  created_at: '2025-11-02', last_login: '2026-09-15 08:12' },
-  { id: 2, full_name: 'Okot Brian',      email: 'brian.okot@avic.ug',   phone: '+256 701 553 118', role: 'adjuster', status: 'active',  created_at: '2025-06-14', last_login: '2026-09-16 07:40' },
-  { id: 3, full_name: 'Kigongo Motors',  email: 'desk@kigongomotors.ug',phone: '+256 414 250 771', role: 'garage',   status: 'active',  created_at: '2025-08-21', last_login: '2026-09-15 16:55' },
-  { id: 4, full_name: 'Nakato Sylvia',   email: 'sylvia@avic.ug',       phone: '+256 782 660 431', role: 'admin',    status: 'active',  created_at: '2025-01-09', last_login: '2026-09-16 06:58' },
-  { id: 5, full_name: 'Mugisha Alex',    email: 'alex.m@example.ug',    phone: '+256 758 209 663', role: 'claimant', status: 'active',  created_at: '2026-02-17', last_login: '2026-09-14 19:02' },
-  { id: 6, full_name: 'Namara Pride',    email: 'pride.n@example.ug',   phone: '+256 703 887 145', role: 'claimant', status: 'pending', created_at: '2026-09-12', last_login: null },
-  { id: 7, full_name: 'Ssemwanga Autoworks', email: 'info@ssemwanga.ug',phone: '+256 392 110 448', role: 'garage',   status: 'pending', created_at: '2026-09-10', last_login: null },
-  { id: 8, full_name: 'Atuhaire Grace',  email: 'grace.a@avic.ug',      phone: '+256 772 448 210', role: 'adjuster', status: 'active',  created_at: '2025-09-30', last_login: '2026-09-16 08:05' },
-  { id: 9, full_name: 'Kato Ronald',     email: 'r.kato@example.ug',    phone: '+256 706 331 992', role: 'claimant', status: 'suspended', created_at: '2025-12-04', last_login: '2026-07-22 11:30' }
+  { id: 1, uuid: 'c7d1-…-9a02', full_name: 'Ahumuza Doreen',  email: 'doreen@example.ug',    phone: '+256 772 114 902', role: 'claimant', status: 'active',  created_at: '2025-11-02', last_login: '2026-09-15 08:12' },
+  { id: 2, uuid: '4f22-…-71bd', full_name: 'Okot Brian',      email: 'brian.okot@avic.ug',   phone: '+256 701 553 118', role: 'adjuster', status: 'active',  created_at: '2025-06-14', last_login: '2026-09-16 07:40' },
+  { id: 3, uuid: '9e08-…-2c4a', full_name: 'Kigongo Motors',  email: 'desk@kigongomotors.ug',phone: '+256 414 250 771', role: 'garage',   status: 'active',  created_at: '2025-08-21', last_login: '2026-09-15 16:55' },
+  { id: 4, uuid: '1a55-…-6d30', full_name: 'Nakato Sylvia',   email: 'sylvia@avic.ug',       phone: '+256 782 660 431', role: 'admin',    status: 'active',  created_at: '2025-01-09', last_login: '2026-09-16 06:58' },
+  { id: 5, uuid: 'b3c9-…-8e11', full_name: 'Mugisha Alex',    email: 'alex.m@example.ug',    phone: '+256 758 209 663', role: 'claimant', status: 'active',  created_at: '2026-02-17', last_login: '2026-09-14 19:02' },
+  { id: 6, uuid: '77af-…-05c2', full_name: 'Namara Pride',    email: 'pride.n@example.ug',   phone: '+256 703 887 145', role: 'claimant', status: 'pending', created_at: '2026-09-12', last_login: null },
+  { id: 7, uuid: '5db4-…-3f80', full_name: 'Ssemwanga Autoworks', email: 'info@ssemwanga.ug',phone: '+256 392 110 448', role: 'garage',   status: 'pending', created_at: '2026-09-10', last_login: null },
+  { id: 8, uuid: '2cc6-…-9411', full_name: 'Atuhaire Grace',  email: 'grace.a@avic.ug',      phone: '+256 772 448 210', role: 'adjuster', status: 'active',  created_at: '2025-09-30', last_login: '2026-09-16 08:05' },
+  { id: 9, uuid: '8ff1-…-77a3', full_name: 'Kato Ronald',     email: 'r.kato@example.ug',    phone: '+256 706 331 992', role: 'claimant', status: 'suspended', created_at: '2025-12-04', last_login: '2026-07-22 11:30' }
 ];
 
 AVIC.policies = [
@@ -137,6 +138,17 @@ AVIC.notifications = [
   { id: 9, user_id: 4, claim_id: null, type: 'account',       title: 'Two accounts await approval', message: 'Namara Pride and Ssemwanga Autoworks registered and need review.',               is_read: 0, created_at: '2026-09-12 08:30' }
 ];
 
+AVIC.audit = [
+  { id: 1, user_id: 2, action: 'claim.status_changed', entity_type: 'claim',  entity_id: 101, old_value: 'submitted', new_value: 'under_review', ip_address: '102.86.14.7',  created_at: '2026-09-05 09:30' },
+  { id: 2, user_id: 2, action: 'document.verified',    entity_type: 'document',entity_id: 1,  old_value: '0',         new_value: '1',            ip_address: '102.86.14.7',  created_at: '2026-09-06 10:10' },
+  { id: 3, user_id: 3, action: 'estimate.submitted',   entity_type: 'estimate',entity_id: 1,  old_value: null,        new_value: '6850000',      ip_address: '41.210.155.2', created_at: '2026-09-08 11:00' },
+  { id: 4, user_id: 4, action: 'payout.created',       entity_type: 'payout',  entity_id: 2,  old_value: null,        new_value: '4800000',      ip_address: '196.43.133.9', created_at: '2026-09-06 15:20' },
+  { id: 5, user_id: 8, action: 'claim.status_changed', entity_type: 'claim',   entity_id: 107,old_value: 'under_review',new_value: 'approved',   ip_address: '102.86.14.19', created_at: '2026-08-05 13:15' },
+  { id: 6, user_id: 4, action: 'user.suspended',       entity_type: 'user',    entity_id: 9,  old_value: 'active',    new_value: 'suspended',    ip_address: '196.43.133.9', created_at: '2026-07-24 09:12' },
+  { id: 7, user_id: 2, action: 'claim.rejected',       entity_type: 'claim',   entity_id: 106,old_value: 'under_review',new_value: 'rejected',   ip_address: '102.86.14.7',  created_at: '2026-08-18 16:40' },
+  { id: 8, user_id: 1, action: 'auth.login',           entity_type: 'user',    entity_id: 1,  old_value: null,        new_value: null,           ip_address: '154.72.200.5', created_at: '2026-09-15 08:12' }
+];
+
 AVIC.settings = {
   company_name: 'AVIC Insurance Co.',
   payout_currency: 'UGX',
@@ -155,6 +167,7 @@ AVIC.settings = {
 AVIC.user   = id => AVIC.users.find(u => u.id === id) || null;
 AVIC.policy = id => AVIC.policies.find(p => p.id === id) || null;
 AVIC.claim  = id => AVIC.claims.find(c => c.id === id) || null;
+AVIC.claimByNumber = n => AVIC.claims.find(c => c.claim_number === n) || null;
 AVIC.docsFor = claimId => AVIC.documents.filter(d => d.claim_id === claimId);
 AVIC.estimatesFor = claimId => AVIC.estimates.filter(e => e.claim_id === claimId);
 AVIC.payoutFor = claimId => AVIC.payouts.find(p => p.claim_id === claimId) || null;

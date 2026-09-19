@@ -1,4 +1,8 @@
-/* AVIC Portal — 403 and 404 screens. The 403 names both desks. */
+/* ============================================================
+   AVIC Portal — 403 and 404 screens
+   The 403 names both desks so the person understands what
+   happened rather than seeing a bare error code.
+   ============================================================ */
 
 (function () {
   const s = AVIC.session();

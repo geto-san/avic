@@ -1,5 +1,8 @@
-/* AVIC Portal — shared UI helpers: formatting, badges, toasts,
-   modals, sortable tables, dropzones, validation, bar charts. */
+/* ============================================================
+   AVIC Portal — shared UI helpers
+   Formatting, badges, toasts, confirm dialogs, sortable tables,
+   character counters, drag-and-drop preview, tiny bar charts.
+   ============================================================ */
 
 const UI = {};
 

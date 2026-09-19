@@ -1,144 +1,75 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Settings · AVIC Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="../../assets/css/avic.css" />
-    <script src="../../assets/js/mock-data.js" defer></script>
-    <script src="../../assets/js/session.js" defer></script>
-    <script src="../../assets/js/ui.js" defer></script>
-    <script src="../../assets/js/layout.js" defer></script>
-    <script src="../../assets/js/pages-common.js" defer></script>
-    <script src="../../assets/js/pages-admin.js" defer></script>
-  </head>
-  <body
-    data-page="settings"
-    data-allow="admin"
-    data-crumb="Settings"
-    data-role="admin"
-  >
-    <noscript
-      ><div class="noscript">
-        This prototype renders its screens with JavaScript. Enable it to walk
-        through the portal.
-      </div></noscript
-    >
-    <div class="shell">
-      <div class="main">
-        <main class="page">
-          <div class="page__head">
-            <div>
-              <h1>Settings</h1>
-              <div class="sub">System-wide values every desk works from.</div>
-            </div>
-          </div>
-          <div class="grid grid--wide">
-            <div class="panel">
-              <div class="panel__head"><h2>General</h2></div>
-              <div class="panel__body">
-                <form id="settings-form">
-                  <div class="field">
-                    <label for="company_name">Company name</label>
-                    <input
-                      type="text"
-                      id="company_name"
-                      name="company_name"
-                      data-required
-                    />
-                    <div class="err">A name is required.</div>
-                  </div>
-                  <div class="row2">
-                    <div class="field">
-                      <label for="payout_currency">Currency</label>
-                      <input
-                        type="text"
-                        id="payout_currency"
-                        name="payout_currency"
-                        data-required
-                      />
-                      <div class="err">Required.</div>
-                    </div>
-                    <div class="field">
-                      <label for="claims_sla_days"
-                        >Days to settle a claim</label
-                      >
-                      <input
-                        type="number"
-                        min="1"
-                        id="claims_sla_days"
-                        name="claims_sla_days"
-                        data-required
-                      />
-                      <div class="hint">
-                        Drives the deadline shown on every adjuster queue.
-                      </div>
-                      <div class="err">Required.</div>
-                    </div>
-                  </div>
-                  <div class="row2">
-                    <div class="field">
-                      <label for="max_upload_mb">Largest upload (MB)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        id="max_upload_mb"
-                        name="max_upload_mb"
-                        data-required
-                      />
-                      <div class="err">Required.</div>
-                    </div>
-                    <div class="field">
-                      <label for="support_email">Support email</label>
-                      <input
-                        type="email"
-                        id="support_email"
-                        name="support_email"
-                      />
-                    </div>
-                  </div>
-                  <div class="field">
-                    <label for="auto_assign"
-                      >Assign new claims automatically</label
-                    >
-                    <select id="auto_assign" name="auto_assign">
-                      <option value="off">
-                        Off — an administrator assigns each claim
-                      </option>
-                      <option value="on">
-                        On — route to the lightest caseload
-                      </option>
-                    </select>
-                  </div>
-                  <button class="btn btn--primary" type="submit">
-                    Save settings
-                  </button>
-                </form>
-              </div>
-            </div>
-            <div>
-              <div class="note note--warn">
-                Changing the settlement window moves the deadline on every open
-                claim at once.
-              </div>
-              <div class="future">
-                <span class="future__tag">Future prospect</span>
-                <h3>Email and SMS templates</h3>
-                <p>
-                  Edit the wording of every transactional message, with a live
-                  preview and per-language versions.
-                </p>
-              </div>
-            </div>
-          </div>
-        </main>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings · AVIC Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/mock-data.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/pages-admin.js" defer></script>
+</head>
+<body data-page="settings" data-allow="admin" data-crumb="Settings" data-role="admin">
+<noscript><div class="noscript">This prototype renders its screens with JavaScript. Enable it to walk through the portal.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
+
+      <div class="page__head">
+        <div><h1>Settings</h1><div class="sub">System-wide values every desk works from.</div></div>
       </div>
-    </div>
-  </body>
+      <div class="grid grid--wide">
+        <div class="panel">
+          <div class="panel__head"><h2>General</h2></div>
+          <div class="panel__body">
+            <form id="settings-form">
+              <div class="field"><label for="company_name">Company name</label>
+                <input type="text" id="company_name" name="company_name" data-required>
+                <div class="err">A name is required.</div></div>
+              <div class="row2">
+                <div class="field"><label for="payout_currency">Currency</label>
+                  <input type="text" id="payout_currency" name="payout_currency" data-required>
+                  <div class="err">Required.</div></div>
+                <div class="field"><label for="claims_sla_days">Days to settle a claim</label>
+                  <input type="number" min="1" id="claims_sla_days" name="claims_sla_days" data-required>
+                  <div class="hint">Drives the deadline shown on every adjuster queue.</div>
+                  <div class="err">Required.</div></div>
+              </div>
+              <div class="row2">
+                <div class="field"><label for="max_upload_mb">Largest upload (MB)</label>
+                  <input type="number" min="1" id="max_upload_mb" name="max_upload_mb" data-required>
+                  <div class="err">Required.</div></div>
+                <div class="field"><label for="support_email">Support email</label>
+                  <input type="email" id="support_email" name="support_email"></div>
+              </div>
+              <div class="field"><label for="auto_assign">Assign new claims automatically</label>
+                <select id="auto_assign" name="auto_assign">
+                  <option value="off">Off — an administrator assigns each claim</option>
+                  <option value="on">On — route to the lightest caseload</option>
+                </select></div>
+              <button class="btn btn--primary" type="submit">Save settings</button>
+            </form>
+          </div>
+        </div>
+        <div>
+          <div class="note note--warn">Changing the settlement window moves the deadline on every open claim at once.</div>
+          <div class="future">
+  <span class="future__tag">Future prospect</span>
+  <h3>Email and SMS templates</h3>
+  <p>Edit the wording of every transactional message, with a live preview and per-language versions.</p>
+  
+</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
 </html>

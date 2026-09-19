@@ -1,5 +1,10 @@
-/* AVIC Portal — garage bay. Only claims with a work order for
-   this garage, and only via the AVIC.garageViewOf() projection. */
+/* ============================================================
+   AVIC Portal — garage bay
+   A garage sees only the claims it holds a work order for, and
+   only the vehicle and damage fields of those claims. Claimant
+   identity, policy numbers and payout figures are never sent to
+   this desk — see AVIC.garageViewOf().
+   ============================================================ */
 
 const Garage = {};
 
@@ -139,6 +144,7 @@ AVIC.boot(function (s) {
     'work-orders': Garage.workOrders,
     estimates: Garage.estimates,
     'estimate-new': Garage.estimateForm,
-    notifications: AVIC.pages.notifications
+    notifications: AVIC.pages.notifications,
+    profile: AVIC.pages.profile
   }[document.body.dataset.page] || function () {})(s);
 });

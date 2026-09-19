@@ -1,86 +1,69 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Claim · AVIC Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="../../assets/css/avic.css" />
-    <script src="../../assets/js/mock-data.js" defer></script>
-    <script src="../../assets/js/session.js" defer></script>
-    <script src="../../assets/js/ui.js" defer></script>
-    <script src="../../assets/js/layout.js" defer></script>
-    <script src="../../assets/js/pages-common.js" defer></script>
-    <script src="../../assets/js/pages-claimant.js" defer></script>
-  </head>
-  <body
-    data-page="claim-detail"
-    data-allow="claimant"
-    data-crumb="Claim"
-    data-role="claimant"
-  >
-    <noscript
-      ><div class="noscript">
-        This prototype renders its screens with JavaScript. Enable it to walk
-        through the portal.
-      </div></noscript
-    >
-    <div class="shell">
-      <div class="main">
-        <main class="page">
-          <div class="page__head">
-            <div>
-              <h1 class="mono" id="c-number">—</h1>
-              <div class="sub" id="c-sub"></div>
-            </div>
-            <div class="page__actions" id="c-actions"></div>
-          </div>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim · AVIC Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/mock-data.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/pages-claimant.js" defer></script>
+</head>
+<body data-page="claim-detail" data-allow="claimant" data-crumb="Claim" data-role="claimant">
+<noscript><div class="noscript">This prototype renders its screens with JavaScript. Enable it to walk through the portal.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
 
-          <div class="grid grid--wide">
-            <div>
-              <div class="panel">
-                <div class="panel__head">
-                  <h2>Claim details</h2>
-                  <div class="spacer"></div>
-                  <span id="c-badge"></span>
-                </div>
-                <div class="panel__body" id="c-facts"></div>
-              </div>
-              <div class="panel">
-                <div class="panel__head"><h2>Your documents</h2></div>
-                <div id="c-docs"></div>
-              </div>
-            </div>
-            <div>
-              <div class="panel">
-                <div class="panel__head"><h2>Progress</h2></div>
-                <div class="panel__body" id="c-timeline"></div>
-              </div>
-              <div class="panel">
-                <div class="panel__head"><h2>Repair estimate</h2></div>
-                <div class="panel__body" id="c-estimate"></div>
-              </div>
-              <div class="panel">
-                <div class="panel__head"><h2>Payout</h2></div>
-                <div class="panel__body" id="c-payout"></div>
-              </div>
-              <div class="future">
-                <span class="future__tag">Future prospect</span>
-                <h3>Message your adjuster</h3>
-                <p>
-                  A thread on each claim so questions do not have to go through
-                  the call centre.
-                </p>
-              </div>
-            </div>
-          </div>
-        </main>
+      <div class="page__head">
+        <div>
+          <h1 class="mono" id="c-number">—</h1>
+          <div class="sub" id="c-sub"></div>
+        </div>
+        <div class="page__actions" id="c-actions"></div>
       </div>
-    </div>
-  </body>
+
+      <div class="grid grid--wide">
+        <div>
+          <div class="panel">
+            <div class="panel__head"><h2>Claim details</h2><div class="spacer"></div><span id="c-badge"></span></div>
+            <div class="panel__body" id="c-facts"></div>
+          </div>
+          <div class="panel">
+            <div class="panel__head"><h2>Your documents</h2></div>
+            <div id="c-docs"></div>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <div class="panel__head"><h2>Progress</h2></div>
+            <div class="panel__body" id="c-timeline"></div>
+          </div>
+          <div class="panel">
+            <div class="panel__head"><h2>Repair estimate</h2></div>
+            <div class="panel__body" id="c-estimate"></div>
+          </div>
+          <div class="panel">
+            <div class="panel__head"><h2>Payout</h2></div>
+            <div class="panel__body" id="c-payout"></div>
+          </div>
+          <div class="future">
+  <span class="future__tag">Future prospect</span>
+  <h3>Message your adjuster</h3>
+  <p>A thread on each claim so questions do not have to go through the call centre.</p>
+  
+</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
 </html>

@@ -1,118 +1,134 @@
-/* AVIC Portal — sign-in, registration and password screens.
-   No password is checked; the demo account for the email is signed in. */
-
 (function () {
   const page = document.body.dataset.page;
 
   /* ---------------- login ---------------- */
-  if (page === 'login') {
-    /* already signed in? go straight to that desk */
-    const live = AVIC.session();
-    if (live && !UI.qs('reason')) location.replace(AVIC.homeFor(live.role));
-
-    if (!AVIC.storageOk) {
-      document.getElementById('reason').innerHTML =
-        '<div class="note note--stop">This browser will not keep a session for pages opened straight from a folder. ' +
-        'Serve the folder over a local web server — <span class="mono">python3 -m http.server</span> in the project root, ' +
-        'or drop it in your XAMPP <span class="mono">htdocs</span> — then open it through <span class="mono">localhost</span>.</div>';
-    }
-
-    const reason = UI.qs('reason');
-    if (reason === 'signin') {
-      document.getElementById('reason').innerHTML =
-        '<div class="note note--warn">Sign in to open that page.</div>';
-    }
-
-    /* demo desks */
-    const demos = [1, 2, 3, 4].map(AVIC.user);
-    document.getElementById('demo-users').innerHTML = demos.map(u =>
-      '<button class="demo-user" data-id="' + u.id + '" style="--pill:' + AVIC.roles[u.role].accent + '">' +
-        '<span class="demo-user__dot"></span>' +
-        '<span><span class="demo-user__t">' + UI.esc(AVIC.roles[u.role].label) + '</span>' +
-        '<span class="demo-user__d"> · ' + UI.esc(u.full_name) + '</span></span>' +
-        '<span class="demo-user__go">Open</span>' +
-      '</button>').join('');
-
-    document.querySelectorAll('.demo-user').forEach(b => b.onclick = () => {
-      const s = AVIC.signIn(+b.dataset.id);
-      location.href = AVIC.homeFor(s.role);
-    });
-
-    const form = document.getElementById('login-form');
-    form.onsubmit = e => {
-      e.preventDefault();
-      if (!UI.validate(form)) return;
-      const u = AVIC.users.find(x => x.email.toLowerCase() === form.elements.email.value.trim().toLowerCase());
-      if (!u) {
-        document.getElementById('reason').innerHTML =
-          '<div class="note note--stop">No account uses that email. Try one of the demo desks below.</div>';
-        return;
-      }
-      if (u.status !== 'active') {
-        document.getElementById('reason').innerHTML =
-          '<div class="note note--stop">This account is ' + u.status + '. An administrator has to activate it before you can sign in.</div>';
-        return;
-      }
-      const s = AVIC.signIn(u.id);
-      const intended = sessionStorage.getItem('avic.intended');
-      sessionStorage.removeItem('avic.intended');
-      location.href = intended || AVIC.homeFor(s.role);
-    };
+  if (page === "login") {
   }
 
   /* ---------------- register ---------------- */
-  if (page === 'register') {
-    const form = document.getElementById('register-form');
-    document.querySelectorAll('.choice[data-role]').forEach(ch => ch.onclick = () => {
-      document.querySelectorAll('.choice[data-role]').forEach(x => x.classList.remove('is-on'));
-      ch.classList.add('is-on');
-      form.elements.role.value = ch.dataset.role;
-      document.getElementById('garage-fields').classList.toggle('hidden', ch.dataset.role !== 'garage');
+  if (page === "register") {
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("register-form");
+      const roleInput = form.querySelector('input[name="role"]');
+      const garageFields = document.getElementById("garage-fields");
+      const doneSection = document.getElementById("done");
+
+      document.querySelectorAll(".choice").forEach((choice) => {
+        choice.addEventListener("click", () => {
+          document
+            .querySelectorAll(".choice")
+            .forEach((c) => c.classList.remove("choice--active"));
+          choice.classList.add("choice--active");
+          roleInput.value = choice.dataset.role;
+          garageFields.classList.toggle(
+            "hidden",
+            choice.dataset.role !== "garage",
+          );
+        });
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        clearFieldErrors(form);
+        if (!validateForm(form)) return;
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Creating account…";
+
+        const payload = {
+          role: roleInput.value,
+          full_name: form.full_name.value.trim(),
+          email: form.email.value.trim(),
+          phone: form.phone.value.trim(),
+          password: form.password.value,
+          password2: form.password2.value,
+          garage_address: form.garage_address
+            ? form.garage_address.value.trim()
+            : null,
+          trading_licence: form.trading_licence
+            ? form.trading_licence.value.trim()
+            : null,
+        };
+
+        try {
+          const res = await fetch("../../config/auth/register.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+
+          if (!res.ok) {
+            showServerErrors(form, data);
+            return;
+          }
+          form.closest(".panel").classList.add("hidden");
+          doneSection.classList.remove("hidden");
+        } catch {
+          alert("Network error — please try again.");
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Create account";
+        }
+      });
     });
 
-    form.onsubmit = e => {
-      e.preventDefault();
-      if (!UI.validate(form)) return UI.toast('Fill in the highlighted fields.', 'bad');
-      if (!form.elements.role.value) return UI.toast('Choose whether you are a claimant or a garage.', 'bad');
-      if (form.elements.password.value !== form.elements.password2.value) {
-        form.elements.password2.closest('.field').classList.add('has-error');
-        return UI.toast('The two passwords do not match.', 'bad');
+    function validateForm(form) {
+      let valid = true;
+
+      if (!form.role.value) valid = false;
+
+      form.querySelectorAll("[data-required]").forEach((field) => {
+        if (!field.value.trim()) {
+          setFieldError(field, true);
+          valid = false;
+        }
+      });
+
+      if (
+        form.email.value &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.value)
+      ) {
+        setFieldError(form.email, true);
+        valid = false;
       }
-      document.getElementById('done').classList.remove('hidden');
-      form.closest('.panel').classList.add('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+      if (form.password.value.length < 8) {
+        setFieldError(form.password, true);
+        valid = false;
+      }
+      if (form.password.value !== form.password2.value) {
+        setFieldError(form.password2, true);
+        valid = false;
+      }
+      if (!form.terms.checked) valid = false;
+
+      return valid;
+    }
+
+    function setFieldError(field, hasError) {
+      field.closest(".field")?.classList.toggle("field--invalid", hasError);
+    }
+    function clearFieldErrors(form) {
+      form
+        .querySelectorAll(".field")
+        .forEach((f) => f.classList.remove("field--invalid"));
+    }
+    function showServerErrors(form, data) {
+      if (data.errors) {
+        Object.entries(data.errors).forEach(([name, msg]) => {
+          const field = form.querySelector(`[name="${name}"]`);
+          if (field) setFieldError(field, true);
+        });
+      }
+      alert(data.message || "Could not create account.");
+    }
   }
 
   /* ---------------- forgot / reset ---------------- */
-  if (page === 'forgot-password') {
-    const form = document.getElementById('forgot-form');
-    form.onsubmit = e => {
-      e.preventDefault();
-      if (!UI.validate(form)) return;
-      document.getElementById('sent').classList.remove('hidden');
-      form.closest('.panel').classList.add('hidden');
-    };
+  if (page === "forgot-password") {
   }
 
-  if (page === 'reset-password') {
-    const form = document.getElementById('reset-form');
-    const bar = document.getElementById('strength');
-    form.elements.password.oninput = () => {
-      const v = form.elements.password.value;
-      const score = [v.length >= 8, /[A-Z]/.test(v), /[0-9]/.test(v), /[^A-Za-z0-9]/.test(v)].filter(Boolean).length;
-      const words = ['Too short', 'Weak', 'Fair', 'Good', 'Strong'];
-      bar.textContent = v ? words[score] : '';
-    };
-    form.onsubmit = e => {
-      e.preventDefault();
-      if (!UI.validate(form)) return;
-      if (form.elements.password.value !== form.elements.password2.value) {
-        form.elements.password2.closest('.field').classList.add('has-error');
-        return UI.toast('The two passwords do not match.', 'bad');
-      }
-      UI.toast('Password changed in the prototype. Sign in again.', 'ok');
-      setTimeout(() => location.href = 'login.html', 1000);
-    };
+  if (page === "reset-password") {
   }
 })();

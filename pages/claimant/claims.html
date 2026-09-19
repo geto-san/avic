@@ -1,70 +1,47 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>My claims · AVIC Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="../../assets/css/avic.css" />
-    <script src="../../assets/js/mock-data.js" defer></script>
-    <script src="../../assets/js/session.js" defer></script>
-    <script src="../../assets/js/ui.js" defer></script>
-    <script src="../../assets/js/layout.js" defer></script>
-    <script src="../../assets/js/pages-common.js" defer></script>
-    <script src="../../assets/js/pages-claimant.js" defer></script>
-  </head>
-  <body
-    data-page="claims"
-    data-allow="claimant"
-    data-crumb="My claims"
-    data-role="claimant"
-  >
-    <noscript
-      ><div class="noscript">
-        This prototype renders its screens with JavaScript. Enable it to walk
-        through the portal.
-      </div></noscript
-    >
-    <div class="shell">
-      <div class="main">
-        <main class="page">
-          <div class="page__head">
-            <div>
-              <h1>My claims</h1>
-              <div class="sub">Every claim you have filed, newest first.</div>
-            </div>
-            <div class="page__actions">
-              <a class="btn btn--primary" href="claim-new.html">File a claim</a>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="filters">
-              <input
-                type="search"
-                id="f-q"
-                placeholder="Search claim number or place"
-                aria-label="Search claims"
-              />
-              <select id="f-status" aria-label="Filter by status">
-                <option value="">Any status</option>
-                <option value="draft">Draft</option>
-                <option value="submitted">Submitted</option>
-                <option value="under_review">Under review</option>
-                <option value="pending_docs">Documents needed</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-                <option value="paid">Paid</option>
-              </select>
-            </div>
-            <div id="claims-table"></div>
-          </div>
-        </main>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My claims · AVIC Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/mock-data.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/pages-claimant.js" defer></script>
+</head>
+<body data-page="claims" data-allow="claimant" data-crumb="My claims" data-role="claimant">
+<noscript><div class="noscript">This prototype renders its screens with JavaScript. Enable it to walk through the portal.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
+
+      <div class="page__head">
+        <div><h1>My claims</h1><div class="sub">Every claim you have filed, newest first.</div></div>
+        <div class="page__actions"><a class="btn btn--primary" href="claim-new.html">File a claim</a></div>
       </div>
-    </div>
-  </body>
+      <div class="panel">
+        <div class="filters">
+          <input type="search" id="f-q" placeholder="Search claim number or place" aria-label="Search claims">
+          <select id="f-status" aria-label="Filter by status"><option value="">Any status</option>
+          <option value="draft">Draft</option>
+          <option value="submitted">Submitted</option>
+          <option value="under_review">Under review</option>
+          <option value="pending_docs">Documents needed</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="paid">Paid</option></select>
+        </div>
+        <div id="claims-table"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
 </html>
