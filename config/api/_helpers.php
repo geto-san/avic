@@ -215,12 +215,12 @@ function save_uploads(PDO $conn, int $claimId, int $userId, array $files): int
 }
 
 /* Pick the doc_type bucket from the raw file name / mime. */
-function upload_doc_type(?string $ext, string $mime, string $name): string
+function upload_doc_type(string $mime, string $name): string
 {
     if ($mime === 'application/pdf') {
         $n = strtolower($name);
-        if (str_contains($n, 'police'))  return 'police_report';
-        if (str_contains($n, 'quote') || str_contains($n, 'estim')) return 'repair_estimate';
+        if (str_contains($n, 'police'))  { return 'police_report'; }
+        if (str_contains($n, 'quote') || str_contains($n, 'estim')) { return 'repair_estimate'; }
         return 'other';
     }
     return $mime === 'image/jpeg' && str_contains(strtolower($name), 'photo') ? 'accident_photo' : 'vehicle_photo';
