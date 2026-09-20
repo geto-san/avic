@@ -94,5 +94,5 @@ try {
     api_json(200, ['ok' => true, 'estimate_id' => $estimateId, 'total_estimate' => $total]);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    api_json(500, ['message' => 'DB: ' . $e->getMessage()]);
+    api_json(500, ['message' => 'Could not save the estimate right now.']);
 }
