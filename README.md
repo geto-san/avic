@@ -133,8 +133,8 @@ pages/
   claimant/ adjuster/ garage/   the three desks
   errors/                  403 / 404
 docs/
-  avic-dev-plan.html       original design plan
-  porting-to-php.md        prototype -> PHP endpoint mapping (current, live)
+  hardcoded-dependencies.md  pre-port audit of what used to be mock data (historical)
+  porting-to-php.md          prototype -> PHP endpoint mapping (current, live)
 ```
 
 ## Security notes
