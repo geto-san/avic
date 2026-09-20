@@ -41,5 +41,5 @@
 
   why.innerHTML = '<p>' + UI.esc(text) + '</p>' +
     (s ? '<dl class="kv"><dt>Signed in as</dt><dd>' + UI.esc(s.name) + ' · ' + UI.esc(AVIC.roles[s.role].label) + '</dd>' +
-         '<dt>Recorded</dt><dd>' + new Date().toLocaleString('en-GB') + '</dd></dl>' : '');
+         '</dl>' : '');
 })();
