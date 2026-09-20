@@ -26,8 +26,8 @@ Garage.dashboard = function (s) {
       { label: 'Vehicle', cell: o => UI.esc(AVIC.garageViewOf(AVIC.claim(o.claim_id)).vehicle) },
       { label: 'Damage', cell: o => UI.esc(AVIC.labels.claim_type[AVIC.claim(o.claim_id).claim_type]) },
       { label: 'Quote due', cell: o => UI.sla(o.due) },
-      { label: 'State', cell: o => UI.badge(o.status === 'quoted' ? 'submitted' : 'pending_docs',
-          { submitted: 'Quote sent', pending_docs: 'Revision asked for' }) }
+      { label: 'State', cell: o => UI.badge(o.status === 'quoted' ? 'submitted' : (o.status === 'open' ? 'open' : 'pending_docs'),
+          { submitted: 'Quote sent', open: 'Awaiting your quote', pending_docs: 'Revision asked for' }) }
     ],
     emptyTitle: 'No work orders open',
     emptyBody: 'An adjuster assigns vehicles to your workshop from the claim review screen.'
