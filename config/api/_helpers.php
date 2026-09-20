@@ -70,7 +70,7 @@ function api_settings(PDO $conn): array
         'payout_currency' => 'UGX',
         'max_upload_mb'   => 10,
         'claims_sla_days' => 14,
-        'auto_assign'     => 'off',
+        'auto_assign'     => 'round_robin',
         'support_email'   => 'support@avic.ug',
     ];
     foreach ($rows as $r) {

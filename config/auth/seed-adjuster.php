@@ -3,12 +3,19 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../db/db_connection.php';
 
-$fullName = 'Imprisoned Matyr';
-$email    = 'imprisonedmatyr@gmail.com';
-$phone    = '+256 750 225 129';
+$password = $argv[1] ?? 'DemoPassword1!';
+if ($password === 'DemoPassword1!') {
+    echo 'Password for adjuster account: ';
+    $password = trim(fgets(STDIN));
+}
+if (strlen($password) < 8) {
+    fwrite(STDERR, "Password must be at least 8 characters.\n");
+    exit(1);
+}
 
-$password = $argv[1] ?? '24092001Dap';
-if ($password === '24092001Dap') {
+$fullName = $argv[2] ?? 'Demo Adjuster';
+$email    = $argv[3] ?? 'adjuster@example.com';
+$phone    = $argv[4] ?? '+1 000 000 0000';
     echo 'Password for adjuster account: ';
     $password = trim(fgets(STDIN));
 }
