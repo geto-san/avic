@@ -19,7 +19,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     exit;
 }
 
-$user = api_user();
+$user = apiUser();
 $docId = (int)($_GET['doc'] ?? 0);
 
 try {
@@ -55,7 +55,7 @@ try {
     }
 
     /* extension whitelist — never guess a type from the client's header */
-    $ext = upload_ext_from_mime((string)$doc['mime_type']);
+    $ext = uploadExtFromMime((string)$doc['mime_type']);
     if ($ext === null) {
         http_response_code(415);
         echo 'Unsupported file type.';

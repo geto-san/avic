@@ -67,12 +67,12 @@ AVIC.notificationsFor = session =>
   session ? AVIC.notifications.filter(n => n.user_id === session.id) : [];
 
 AVIC.policiesFor = session =>
-  session && session.role === 'claimant'
+  session?.role === 'claimant'
     ? AVIC.policies.filter(p => p.user_id === session.id)
     : [];
 
 AVIC.workOrdersFor = session =>
-  session && session.role === 'garage'
+  session?.role === 'garage'
     ? AVIC.workOrders.filter(w => w.garage_user_id === session.id)
     : [];
 

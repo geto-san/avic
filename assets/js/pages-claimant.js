@@ -53,6 +53,11 @@ Claimant.dashboard = function (s) {
   });
 };
 
+Claimant.timelineClass = function (i, at) {
+  if (i < at) return 'is-done';
+  return i === at ? 'is-current' : '';
+};
+
 Claimant.timelineHTML = function (c) {
   const ladder = c.status === 'rejected'
     ? ['draft', 'submitted', 'under_review', 'rejected']
@@ -63,7 +68,7 @@ Claimant.timelineHTML = function (c) {
     approved: c.reviewed_at, rejected: c.reviewed_at, paid: c.resolved_at
   };
   return '<ol class="timeline">' + ladder.map((st, i) => {
-    const cls = i < at ? 'is-done' : i === at ? 'is-current' : '';
+    const cls = Claimant.timelineClass(i, at);
     return '<li class="' + cls + '">' +
       '<span class="dot"></span><div>' +
       '<div class="timeline__t">' + UI.esc(AVIC.labels.status[st]) + '</div>' +
@@ -195,6 +200,116 @@ Claimant.policies = function (s) {
     '</div>').join('');
 };
 
+/* ---------------- claim wizard helpers ---------------- */
+const RESUME_FIELDS = ['incident_date', 'incident_location', 'incident_description', 'police_report_ref'];
+
+Claimant.fieldValue = function (form, name) {
+  return form.elements[name]?.value || '';
+};
+
+Claimant.vehicleName = function (p) {
+  return [p.vehicle_year, p.vehicle_make, p.vehicle_model].join(' ');
+};
+
+Claimant.estimateTotal = function (form) {
+  const n = name => +Claimant.fieldValue(form, name) || 0;
+  return n('parts_cost') + n('labor_cost') + n('other_cost');
+};
+
+Claimant.policyOptionsHTML = function (policies) {
+  const options = policies.map(p => {
+    const inactive = p.status !== 'active';
+    return '<option value="' + p.id + '"' + (inactive ? ' disabled' : '') + '>' +
+      p.policy_number + ' — ' + Claimant.vehicleName(p) +
+      (inactive ? ' (' + p.status + ')' : '') + '</option>';
+  });
+  return '<option value="">Choose a policy…</option>' + options.join('');
+};
+
+Claimant.vehicleBoxHTML = function (p) {
+  if (!p) return '<p class="muted small">Pick a policy and the vehicle on cover appears here.</p>';
+  const expired = p.status !== 'active';
+  return (expired ? '<div class="note note--stop">This policy is ' + p.status + '. A claim filed against it will be rejected at review.</div>' : '') +
+    '<dl class="kv">' +
+    '<dt>Vehicle</dt><dd>' + UI.esc(Claimant.vehicleName(p)) + '</dd>' +
+    '<dt>Number plate</dt><dd class="mono">' + UI.esc(p.vehicle_plate) + '</dd>' +
+    '<dt>Cover</dt><dd>' + UI.esc(AVIC.labels.coverage[p.coverage_type]) + ' up to <span class="mono">' + UI.money(p.coverage_limit) + '</span></dd>' +
+    '<dt>Valid until</dt><dd>' + UI.date(p.end_date) + '</dd></dl>';
+};
+
+Claimant.fillForm = function (form, values, keys) {
+  keys.forEach(k => {
+    const el = form.elements[k];
+    if (el && values[k]) el.value = values[k];
+  });
+};
+
+Claimant.markClaimType = function (type) {
+  if (!type) return;
+  document.querySelector('.choice[data-type="' + type + '"]')?.classList.add('is-on');
+};
+
+/* resuming a server-side draft, or adding documents to a parked claim */
+Claimant.resumeClaim = function (form, sel, c) {
+  if (c.policy_id) sel.value = c.policy_id;
+  Claimant.fillForm(form, c, RESUME_FIELDS);
+  if (c.claim_type) {
+    Claimant.markClaimType(c.claim_type);
+    form.elements.claim_type.value = c.claim_type;
+  }
+  sel.onchange();
+};
+
+/* restore the sessionStorage draft if one was left behind */
+Claimant.restoreDraft = function (form, sel, stamp) {
+  const kept = sessionStorage.getItem('avic.draft');
+  if (!kept) return;
+  try {
+    const d = JSON.parse(kept);
+    Claimant.fillForm(form, d, Object.keys(d));
+    if (d.policy_id) sel.onchange();
+    Claimant.markClaimType(d.claim_type);
+    stamp.textContent = 'Draft restored';
+  } catch (err) {
+    // A corrupt or hand-edited draft is not worth blocking the form for:
+    // start blank instead.
+    console.warn('[claim wizard] could not restore saved draft:', err);
+  }
+};
+
+Claimant.summaryHTML = function (form, p, fileCount) {
+  const v = n => Claimant.fieldValue(form, n);
+  const documents = fileCount ? fileCount + ' attached' : 'None attached';
+  return '<dl class="kv">' +
+    '<dt>Policy</dt><dd class="mono">' + UI.esc(p ? p.policy_number : '—') + '</dd>' +
+    '<dt>Vehicle</dt><dd>' + UI.esc(p ? Claimant.vehicleName(p) : '—') + '</dd>' +
+    '<dt>Incident</dt><dd>' + UI.esc(AVIC.labels.claim_type[v('claim_type')] || '—') + ' on ' + UI.date(v('incident_date')) + '</dd>' +
+    '<dt>Location</dt><dd>' + UI.esc(v('incident_location') || '—') + '</dd>' +
+    '<dt>Description</dt><dd>' + UI.esc(v('incident_description') || '—') + '</dd>' +
+    '<dt>Police reference</dt><dd class="mono">' + UI.esc(v('police_report_ref') || 'None') + '</dd>' +
+    '<dt>Documents</dt><dd>' + documents + '</dd>' +
+    '<dt>Garage</dt><dd>' + UI.esc(v('garage_name') || 'Not chosen yet') + '</dd>' +
+    '<dt>Estimate</dt><dd class="mono">' + UI.money(Claimant.estimateTotal(form)) + '</dd>' +
+    '</dl>';
+};
+
+/* the claim-core fields, shared by draft and submit */
+Claimant.wizardCore = function (form, claimId, forSubmit) {
+  const v = n => Claimant.fieldValue(form, n);
+  const total = Claimant.estimateTotal(form);
+  const fields = {
+    policy_id: v('policy_id'),
+    claim_type: v('claim_type'),
+    incident_date: v('incident_date'),
+    incident_location: v('incident_location'),
+    incident_description: v('incident_description'),
+    police_report_ref: v('police_report_ref'),
+  };
+  if (forSubmit || total > 0) fields.estimated_damage = String(total);
+  if (claimId) fields.id = String(claimId);
+  return fields;
+};
+
 /* ---------------- claim wizard ---------------- */
 Claimant.wizard = function (s) {
   const form = document.getElementById('wizard');
@@ -206,26 +321,13 @@ Claimant.wizard = function (s) {
 
   const policies = AVIC.policiesFor(s);
   const sel = document.getElementById('policy_id');
-  sel.innerHTML = '<option value="">Choose a policy…</option>' + policies.map(p =>
-    '<option value="' + p.id + '"' + (p.status !== 'active' ? ' disabled' : '') + '>' +
-    p.policy_number + ' — ' + [p.vehicle_year, p.vehicle_make, p.vehicle_model].join(' ') +
-    (p.status !== 'active' ? ' (' + p.status + ')' : '') + '</option>').join('');
+  sel.innerHTML = Claimant.policyOptionsHTML(policies);
 
   const preset = UI.qs('policy');
   if (preset) sel.value = preset;
 
   sel.onchange = () => {
-    const p = AVIC.policy(+sel.value);
-    const box = document.getElementById('vehicle-box');
-    if (!p) { box.innerHTML = '<p class="muted small">Pick a policy and the vehicle on cover appears here.</p>'; return; }
-    const expired = p.status !== 'active';
-    box.innerHTML =
-      (expired ? '<div class="note note--stop">This policy is ' + p.status + '. A claim filed against it will be rejected at review.</div>' : '') +
-      '<dl class="kv">' +
-      '<dt>Vehicle</dt><dd>' + UI.esc([p.vehicle_year, p.vehicle_make, p.vehicle_model].join(' ')) + '</dd>' +
-      '<dt>Number plate</dt><dd class="mono">' + UI.esc(p.vehicle_plate) + '</dd>' +
-      '<dt>Cover</dt><dd>' + UI.esc(AVIC.labels.coverage[p.coverage_type]) + ' up to <span class="mono">' + UI.money(p.coverage_limit) + '</span></dd>' +
-      '<dt>Valid until</dt><dd>' + UI.date(p.end_date) + '</dd></dl>';
+    document.getElementById('vehicle-box').innerHTML = Claimant.vehicleBoxHTML(AVIC.policy(+sel.value));
   };
   if (preset) sel.onchange();
 
@@ -237,22 +339,8 @@ Claimant.wizard = function (s) {
     document.getElementById('claim_type').dispatchEvent(new Event('input', { bubbles: true }));
   });
 
-  /* resuming a server-side draft, or adding documents to a parked claim */
-  if (state.claimId) {
-    const c = AVIC.claim(state.claimId);
-    if (c) {
-      if (c.policy_id) sel.value = c.policy_id;
-      ['incident_date', 'incident_location', 'incident_description', 'police_report_ref'].forEach(k => {
-        if (form.elements[k] && c[k]) form.elements[k].value = c[k];
-      });
-      if (c.claim_type) {
-        const ch = document.querySelector('.choice[data-type="' + c.claim_type + '"]');
-        if (ch) ch.classList.add('is-on');
-        form.elements.claim_type.value = c.claim_type;
-      }
-      sel.onchange();
-    }
-  }
+  const existing = state.claimId && AVIC.claim(state.claimId);
+  if (existing) Claimant.resumeClaim(form, sel, existing);
 
   UI.counters(form);
   UI.dropzone('#dropzone', '#filelist', files => { draft.files = files; });
@@ -272,21 +360,8 @@ Claimant.wizard = function (s) {
   }
 
   function summarise() {
-    const p = AVIC.policy(+sel.value);
-    const v = n => (form.elements[n] && form.elements[n].value) || '';
-    const parts = +v('parts_cost') || 0, labour = +v('labor_cost') || 0, other = +v('other_cost') || 0;
     document.getElementById('summary').innerHTML =
-      '<dl class="kv">' +
-      '<dt>Policy</dt><dd class="mono">' + UI.esc(p ? p.policy_number : '—') + '</dd>' +
-      '<dt>Vehicle</dt><dd>' + UI.esc(p ? [p.vehicle_year, p.vehicle_make, p.vehicle_model].join(' ') : '—') + '</dd>' +
-      '<dt>Incident</dt><dd>' + UI.esc(AVIC.labels.claim_type[v('claim_type')] || '—') + ' on ' + UI.date(v('incident_date')) + '</dd>' +
-      '<dt>Location</dt><dd>' + UI.esc(v('incident_location') || '—') + '</dd>' +
-      '<dt>Description</dt><dd>' + UI.esc(v('incident_description') || '—') + '</dd>' +
-      '<dt>Police reference</dt><dd class="mono">' + UI.esc(v('police_report_ref') || 'None') + '</dd>' +
-      '<dt>Documents</dt><dd>' + (draft.files.length ? draft.files.length + ' attached' : 'None attached') + '</dd>' +
-      '<dt>Garage</dt><dd>' + UI.esc(v('garage_name') || 'Not chosen yet') + '</dd>' +
-      '<dt>Estimate</dt><dd class="mono">' + UI.money(parts + labour + other) + '</dd>' +
-      '</dl>';
+      Claimant.summaryHTML(form, AVIC.policy(+sel.value), draft.files.length);
   }
 
   document.getElementById('next').onclick = () => {
@@ -299,8 +374,7 @@ Claimant.wizard = function (s) {
   /* running estimate total */
   ['parts_cost', 'labor_cost', 'other_cost'].forEach(n => {
     if (form.elements[n]) form.elements[n].oninput = () => {
-      const t = (+form.elements.parts_cost.value || 0) + (+form.elements.labor_cost.value || 0) + (+form.elements.other_cost.value || 0);
-      document.getElementById('est-total').innerHTML = UI.money(t);
+      document.getElementById('est-total').innerHTML = UI.money(Claimant.estimateTotal(form));
     };
   });
 
@@ -313,47 +387,17 @@ Claimant.wizard = function (s) {
   }
   form.addEventListener('input', () => { stamp.textContent = 'Unsaved changes'; });
   setInterval(saveDraft, 60000);
-  /* the claim-core fields, shared by draft and submit */
-  function wizardCore(forSubmit) {
-    const v = n => (form.elements[n] && form.elements[n].value) || '';
-    const parts = +v('parts_cost') || 0, labour = +v('labor_cost') || 0, other = +v('other_cost') || 0;
-    const fields = {
-      policy_id: v('policy_id'),
-      claim_type: v('claim_type'),
-      incident_date: v('incident_date'),
-      incident_location: v('incident_location'),
-      incident_description: v('incident_description'),
-      police_report_ref: v('police_report_ref'),
-    };
-    if (forSubmit || parts + labour + other > 0) fields.estimated_damage = String(parts + labour + other);
-    if (state.claimId) fields.id = String(state.claimId);
-    return fields;
-  }
-
   document.getElementById('save-draft').onclick = () => {
     saveDraft();
-    const data = Object.assign({ mode: 'draft' }, wizardCore(false));
+    const data = { mode: 'draft', ...Claimant.wizardCore(form, state.claimId, false) };
     API.post('config/api/claims.php', data).then(r => {
-      if (!r.ok || !r.data) return UI.toast((r.data?.message) || 'Could not save the draft.', 'bad');
+      if (!r.ok || !r.data) return UI.toast(r.data?.message || 'Could not save the draft.', 'bad');
       state.claimId = r.data.id;
       UI.toast('Draft saved to your claims. You can finish it any time.', 'ok');
     });
   };
 
-  /* restore a draft if one was left behind */
-  const kept = sessionStorage.getItem('avic.draft');
-  if (kept && !UI.qs('policy')) {
-    try {
-      const d = JSON.parse(kept);
-      Object.keys(d).forEach(k => { if (form.elements[k] && d[k]) form.elements[k].value = d[k]; });
-      if (d.policy_id) sel.onchange();
-      if (d.claim_type) {
-        const ch = document.querySelector('.choice[data-type="' + d.claim_type + '"]');
-        if (ch) ch.classList.add('is-on');
-      }
-      stamp.textContent = 'Draft restored';
-    } catch (e) { /* ignore */ }
-  }
+  if (!UI.qs('policy')) Claimant.restoreDraft(form, sel, stamp);
 
   document.getElementById('submit').onclick = () => {
     if (!form.elements.confirm_true.checked) { UI.toast('Tick the declaration before submitting.', 'bad'); return; }
@@ -370,7 +414,7 @@ Claimant.wizard = function (s) {
     const btn = document.getElementById('submit');
     const fd = new FormData();
     fd.set('mode', 'submit');
-    const core = wizardCore(true);
+    const core = Claimant.wizardCore(form, state.claimId, true);
     Object.keys(core).forEach(k => fd.set(k, core[k]));
     draft.files.forEach(rec => { if (rec.file) fd.append('files[]', rec.file, rec.name); });
 
@@ -378,8 +422,13 @@ Claimant.wizard = function (s) {
     const r = await API.postForm('config/api/claims.php', fd);
     btn.disabled = false;
 
-    if (!r.ok || !r.data) return UI.toast((r.data?.message) || 'Could not submit the claim.', 'bad');
-    try { sessionStorage.removeItem('avic.draft'); } catch (e) { /* ignore */ }
+    if (!r.ok || !r.data) return UI.toast(r.data?.message || 'Could not submit the claim.', 'bad');
+    try {
+      sessionStorage.removeItem('avic.draft');
+    } catch (err) {
+      // Storage can be blocked (private mode); the claim is already submitted.
+      console.warn('[claim wizard] could not clear saved draft:', err);
+    }
     UI.toast('Claim ' + r.data.claim_number + ' submitted — it is with an adjuster.', 'ok');
     setTimeout(() => location.href = 'claims.html', 900);
   }

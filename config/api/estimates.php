@@ -12,14 +12,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    api_json(405, ['message' => 'Method not allowed']);
+    apiJson(405, ['message' => 'Method not allowed']);
 }
 
-$user = api_user(['garage']);
+$user = apiUser(['garage']);
 $gid  = (int)$user['id'];
 $input = json_decode(file_get_contents('php://input'), true);
 if (!is_array($input)) {
-    api_json(400, ['message' => 'Invalid request body']);
+    apiJson(400, ['message' => 'Invalid request body']);
 }
 
 $claimId = (int)($input['claim_id'] ?? 0);
@@ -34,19 +34,19 @@ try {
     $woQ->execute(['cid' => $claimId, 'gid' => $gid]);
     $wo = $woQ->fetch();
     if (!$wo) {
-        api_json(403, ['message' => 'Your workshop does not hold a work order for that claim.']);
+        apiJson(403, ['message' => 'Your workshop does not hold a work order for that claim.']);
     }
     if ($wo['status'] === 'closed') {
-        api_json(409, ['message' => 'That work order is closed.']);
+        apiJson(409, ['message' => 'That work order is closed.']);
     }
     if ($total <= 0) {
-        api_json(422, ['message' => 'The quote total cannot be zero.']);
+        apiJson(422, ['message' => 'The quote total cannot be zero.']);
     }
     if ($days < 1 || $days > 120) {
-        api_json(422, ['message' => 'Set a realistic repair time in working days.']);
+        apiJson(422, ['message' => 'Set a realistic repair time in working days.']);
     }
 
-    $claim = api_can_see_claim($conn, $user, $claimId); // garage allowed via work order above; also asserts claim exists
+    $claim = apiCanSeeClaim($conn, $user, $claimId); // garage allowed via work order above; also asserts claim exists
 
     $garage = $conn->prepare('SELECT full_name, garage_address, phone FROM users WHERE id = :id');
     $garage->execute(['id' => $gid]);
@@ -91,8 +91,8 @@ try {
         'Garage estimate received',
         'A garage has quoted the repair on ' . $claim['claim_number'] . '.');
 
-    api_json(200, ['ok' => true, 'estimate_id' => $estimateId, 'total_estimate' => $total]);
+    apiJson(200, ['ok' => true, 'estimate_id' => $estimateId, 'total_estimate' => $total]);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    api_json(500, ['message' => 'Could not save the estimate right now.']);
+    apiJson(500, ['message' => 'Could not save the estimate right now.']);
 }

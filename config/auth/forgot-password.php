@@ -32,7 +32,8 @@ try {
     $user = $conn->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
     $user->execute(['email' => $email]);
 
-    if ($user->fetch()) {
+    $account = $user->fetch();
+    if ($account) {
         // A fresh request invalidates any link(s) sent earlier.
         $conn->prepare('DELETE FROM password_resets WHERE email = :email')->execute(['email' => $email]);
 
@@ -45,7 +46,8 @@ try {
              ]);
 
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-        $link = $scheme . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/pages/auth/reset-password.html?token=' . $token;
+        $path = '/pages/auth/reset-password.html?token=' . $token;
+        $link = $scheme . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $path;
 
         $sent = @mail($email, 'Reset your AVIC password',
             "Use this link within the next hour to choose a new password:\n\n$link\n\n" .
@@ -54,8 +56,11 @@ try {
         // Most local/dev setups have no MTA configured, so mail() silently
         // fails. Log the link so the flow is still testable end to end
         // without a real mail server. Remove this in production.
+        // Only server-generated values are logged (DB id + token path): the
+        // address and Host header come from the request, so they stay out of
+        // the log (CWE-117 log injection).
         if (!$sent) {
-            error_log("[password reset] " . str_replace(["\r", "\n"], '', $email) . " -> $link");
+            error_log('[password reset] user #' . (int)$account['id'] . ' -> ' . $path);
         }
     }
 

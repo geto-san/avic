@@ -14,17 +14,17 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    api_json(405, ['message' => 'Method not allowed']);
+    apiJson(405, ['message' => 'Method not allowed']);
 }
 
-$user = api_user(['adjuster']);
+$user = apiUser(['adjuster']);
 $input = json_decode(file_get_contents('php://input'), true);
 if (!is_array($input)) {
-    api_json(400, ['message' => 'Invalid request body']);
+    apiJson(400, ['message' => 'Invalid request body']);
 }
 
 if (($input['action'] ?? '') !== 'verify') {
-    api_json(422, ['message' => 'Unknown action.']);
+    apiJson(422, ['message' => 'Unknown action.']);
 }
 $docId = (int)($input['id'] ?? 0);
 
@@ -35,9 +35,9 @@ try {
     $doc->execute(['id' => $docId]);
     $row = $doc->fetch();
     if (!$row) {
-        api_json(404, ['message' => 'Document not found.']);
+        apiJson(404, ['message' => 'Document not found.']);
     }
-    api_can_see_claim($conn, $user, (int)$row['claim_id']); // 403 for other desks' claims
+    apiCanSeeClaim($conn, $user, (int)$row['claim_id']); // 403 for other desks' claims
 
     if (!(int)$row['is_verified']) {
         $conn->prepare('UPDATE claim_documents SET is_verified = 1, verified_by = :by, verified_at = NOW() WHERE id = :id')
@@ -54,8 +54,8 @@ try {
         }
     }
 
-    api_json(200, ['ok' => true]);
+    apiJson(200, ['ok' => true]);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    api_json(500, ['message' => 'Could not update the document right now.']);
+    apiJson(500, ['message' => 'Could not update the document right now.']);
 }

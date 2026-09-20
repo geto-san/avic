@@ -81,8 +81,9 @@ AVIC.loadData = async function () {
     location.replace(API.base('pages/auth/login.html?reason=server'));
     throw new Error('bootstrap failed');
   }
-  if (res.data.me && res.data.me.status && res.data.me.status !== 'active') {
-    location.replace(API.base('pages/errors/403.html?reason=status&was=' + res.data.me.status));
+  const meStatus = res.data.me?.status;
+  if (meStatus && meStatus !== 'active') {
+    location.replace(API.base('pages/errors/403.html?reason=status&was=' + meStatus));
     throw new Error('inactive account');
   }
 

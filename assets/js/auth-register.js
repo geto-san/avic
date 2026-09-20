@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
       form.closest('.panel').classList.add('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
+      console.error('[register] request failed:', err);
       UI.toast('Network error — please try again.', 'bad');
     } finally {
       submitBtn.disabled = false;

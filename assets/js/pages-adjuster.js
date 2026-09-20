@@ -83,6 +83,37 @@ Adjuster.decided = function (s) {
   });
 };
 
+/* Post an approve / send-back decision, then refresh the estimates table. */
+Adjuster.postEstimateDecision = function (payload, failMsg, okMsg) {
+  return API.post('config/api/estimates-decision.php', payload).then(r => {
+    if (!r.ok) return UI.toast(r.data?.message || failMsg, 'bad');
+    AVIC.rerender(Adjuster.estimates);
+    UI.toast(okMsg, 'ok');
+  });
+};
+
+Adjuster.approveEstimate = function (id) {
+  const total = AVIC.estimates.find(x => x.id === id)?.total_estimate;
+  UI.confirm('Approve this estimate?',
+    'The garage will be told to start work at ' + UI.moneyPlain(total) + '.',
+    () => Adjuster.postEstimateDecision(
+      { estimate_id: id, decision: 'approve' },
+      'Could not approve the estimate.', 'Estimate approved.'),
+    'Approve estimate');
+};
+
+Adjuster.sendBackEstimate = function (id) {
+  UI.modal({
+    title: 'Send the estimate back',
+    body: '<form><div class="field"><label for="why">What should the garage change?</label>' +
+          '<textarea id="why" name="why" placeholder="e.g. quote a reconditioned axle rather than a new one"></textarea></div></form>',
+    confirm: 'Send back',
+    onConfirm: d => Adjuster.postEstimateDecision(
+      { estimate_id: id, decision: 'send_back', notes: d?.why || '' },
+      'Could not send the estimate back.', 'Estimate returned to the garage.')
+  });
+};
+
 Adjuster.estimates = function (s) {
   const mineIds = new Set(AVIC.claimsFor(s).map(c => c.id));
   const rows = AVIC.estimates.filter(e => mineIds.has(e.claim_id));
@@ -103,32 +134,8 @@ Adjuster.estimates = function (s) {
     ],
     emptyTitle: 'No estimates on your claims',
     afterDraw(host) {
-      host.querySelectorAll('[data-ok]').forEach(b => b.onclick = () => {
-        const id = +b.dataset.ok;
-        UI.confirm('Approve this estimate?', 'The garage will be told to start work at ' + UI.moneyPlain(
-          (AVIC.estimates.find(x => x.id === id) || {}).total_estimate) + '.',
-          () => API.post('config/api/estimates-decision.php', { estimate_id: id, decision: 'approve' }).then(r => {
-            if (!r.ok) return UI.toast((r.data?.message) || 'Could not approve the estimate.', 'bad');
-            AVIC.rerender(Adjuster.estimates);
-            UI.toast('Estimate approved.', 'ok');
-          }), 'Approve estimate');
-      });
-      host.querySelectorAll('[data-back]').forEach(b => b.onclick = () => {
-        const id = +b.dataset.back;
-        UI.modal({
-          title: 'Send the estimate back',
-          body: '<form><div class="field"><label for="why">What should the garage change?</label>' +
-                '<textarea id="why" name="why" placeholder="e.g. quote a reconditioned axle rather than a new one"></textarea></div></form>',
-          confirm: 'Send back',
-          onConfirm: d => API.post('config/api/estimates-decision.php', {
-            estimate_id: id, decision: 'send_back', notes: (d && d.why) || ''
-          }).then(r => {
-            if (!r.ok) return UI.toast((r.data?.message) || 'Could not send the estimate back.', 'bad');
-            AVIC.rerender(Adjuster.estimates);
-            UI.toast('Estimate returned to the garage.', 'ok');
-          })
-        });
-      });
+      host.querySelectorAll('[data-ok]').forEach(b => { b.onclick = () => Adjuster.approveEstimate(+b.dataset.ok); });
+      host.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => Adjuster.sendBackEstimate(+b.dataset.back); });
     }
   });
 };

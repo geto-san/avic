@@ -14,13 +14,13 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    api_json(405, ['message' => 'Method not allowed']);
+    apiJson(405, ['message' => 'Method not allowed']);
 }
 
-$user = api_user(['adjuster']);
+$user = apiUser(['adjuster']);
 $input = json_decode(file_get_contents('php://input'), true);
 if (!is_array($input)) {
-    api_json(400, ['message' => 'Invalid request body']);
+    apiJson(400, ['message' => 'Invalid request body']);
 }
 
 $claimId = (int)($input['claim_id'] ?? 0);
@@ -29,11 +29,11 @@ $amount = isset($input['amount']) && $input['amount'] !== '' && $input['amount']
 $notes = trim((string)($input['review_notes'] ?? '')) ?: null;
 
 if (!in_array($decision, ['approve', 'reject', 'request_docs'], true)) {
-    api_json(422, ['message' => 'Choose approve, reject, or ask for documents.']);
+    apiJson(422, ['message' => 'Choose approve, reject, or ask for documents.']);
 }
 
 try {
-    $claim = api_can_see_claim($conn, $user, $claimId);
+    $claim = apiCanSeeClaim($conn, $user, $claimId);
     $closure = ['approve' => 'approved', 'reject' => 'rejected', 'request_docs' => 'pending_docs'];
     $newStatus = $closure[$decision];
 
@@ -43,26 +43,26 @@ try {
         $pol = $policy->fetch();
         if (!$pol) {
             /* fail closed: never approve against a policy that is not on file */
-            api_json(422, ['message' => 'There is no policy on file for this claim, so it cannot be approved.']);
+            apiJson(422, ['message' => 'There is no policy on file for this claim, so it cannot be approved.']);
         }
         if ($amount === null || $amount <= 0) {
-            api_json(422, ['message' => 'Set an amount to approve.']);
+            apiJson(422, ['message' => 'Set an amount to approve.']);
         }
         $inPeriod = ($claim['incident_date'] >= $pol['start_date']) && ($claim['incident_date'] <= $pol['end_date']);
         if (!$inPeriod) {
-            api_json(422, [
+            apiJson(422, [
                 'message' => 'The incident falls outside the policy period (' . substr($pol['start_date'], 0, 10) .
                              ' to ' . substr($pol['end_date'], 0, 10) . '), so there is no cover.',
             ]);
         }
         if (in_array($pol['coverage_type'], ['basic'], true) &&
             in_array($claim['claim_type'], ['fire', 'theft', 'natural_disaster'], true)) {
-            api_json(422, [
+            apiJson(422, [
                 'message' => 'This peril is not covered under the basic tier of the policy.',
             ]);
         }
         if ($amount > (float)$pol['coverage_limit']) {
-            api_json(422, ['message' => 'The approved amount exceeds the cover limit on this policy.']);
+            apiJson(422, ['message' => 'The approved amount exceeds the cover limit on this policy.']);
         }
     }
 
@@ -123,8 +123,8 @@ try {
             $claim['claim_number'] . ' needs more documents before it can be assessed.');
     }
 
-    api_json(200, ['ok' => true, 'status' => $newStatus, 'claim_number' => $claim['claim_number']]);
+    apiJson(200, ['ok' => true, 'status' => $newStatus, 'claim_number' => $claim['claim_number']]);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    api_json(500, ['message' => 'Could not record the decision right now.']);
+    apiJson(500, ['message' => 'Could not record the decision right now.']);
 }

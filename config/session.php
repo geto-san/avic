@@ -8,7 +8,7 @@ declare(strict_types=1);
  * POST form cannot ride the session), and Secure whenever the request arrives
  * over HTTPS. Pass $remember = true to extend the cookie lifetime.
  */
-function avic_session(bool $remember = false): void
+function avicSession(bool $remember = false): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;

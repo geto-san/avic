@@ -74,7 +74,7 @@ try {
         respond(403, ['message' => 'This account is ' . $user['status'] . ' and cannot sign in right now.']);
     }
 
-    avic_session($remember);
+    avicSession($remember);
     session_regenerate_id(true);
     $_SESSION['user'] = [
         'id'    => (int)$user['id'],
