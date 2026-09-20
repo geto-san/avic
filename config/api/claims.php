@@ -100,7 +100,7 @@ try {
         'policy_id'             => $policyId,
         'claim_type'            => $claimType,
         'incident_date'         => $incidentDate,
-        'incident_location'     => $incidentDate === '' ? null : $location,
+        'incident_location'     => $location === '' ? null : $location,
         'incident_description'  => $description,
         'police_report_ref'     => $policeRef,
         'estimated_damage'      => $estDamage,

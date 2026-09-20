@@ -87,7 +87,7 @@ try {
 
     header('Content-Type: ' . $mime);
     header('Content-Length: ' . $size);
-    $disposition = $mime === 'application/pdf' ? 'inline' : 'inline';
+    $disposition = 'inline';
     header('Content-Disposition: ' . $disposition . '; filename="' . $doc['original_name'] . '"');
     readfile($path);
 } catch (PDOException $e) {
