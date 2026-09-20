@@ -183,7 +183,7 @@ function save_uploads(PDO $conn, int $claimId, int $userId, array $files): int
         $finfo  = new finfo(FILEINFO_MIME_TYPE);
         $mime   = (string)$finfo->file($file['tmp_name']);
         $ext    = upload_ext_from_mime($mime);
-        $docType = upload_doc_type($ext, $mime, (string)($file['name'] ?? ''));
+        $docType = upload_doc_type($mime, (string)($file['name'] ?? ''));
         if ($ext === null) {
             continue; // not a permitted file type — skipped, not fatal
         }
