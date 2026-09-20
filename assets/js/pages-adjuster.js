@@ -6,13 +6,14 @@
    ============================================================ */
 
 const Adjuster = {};
-const OPEN_STATES = ['submitted', 'under_review', 'pending_docs'];
+const OPEN_STATES = new Set(['submitted', 'under_review', 'pending_docs']);
+const DECIDED_STATES = new Set(['approved', 'rejected', 'paid', 'closed']);
 
 Adjuster.dashboard = function (s) {
   const mine = AVIC.claimsFor(s);
-  const open = mine.filter(c => OPEN_STATES.includes(c.status));
+  const open = mine.filter(c => OPEN_STATES.has(c.status));
   const late = open.filter(c => c.due_date && new Date(c.due_date) < new Date());
-  const decided = mine.filter(c => ['approved', 'rejected', 'paid', 'closed'].includes(c.status));
+  const decided = mine.filter(c => DECIDED_STATES.has(c.status));
 
   document.getElementById('k-open').textContent = open.length;
   document.getElementById('k-late').textContent = late.length;
@@ -21,7 +22,11 @@ Adjuster.dashboard = function (s) {
   document.getElementById('greeting').textContent = 'Your desk, ' + s.name.split(' ')[0];
 
   UI.bars('#mix', Object.entries(
-    mine.reduce((m, c) => (m[AVIC.labels.status[c.status]] = (m[AVIC.labels.status[c.status]] || 0) + 1, m), {})
+    mine.reduce((m, c) => {
+      const k = AVIC.labels.status[c.status];
+      m[k] = (m[k] || 0) + 1;
+      return m;
+    }, {})
   ).map(([k, v]) => ({ k, v })));
 
   UI.table('#next-up', {
@@ -38,7 +43,7 @@ Adjuster.dashboard = function (s) {
 };
 
 Adjuster.queue = function (s) {
-  const rows = AVIC.claimsFor(s).filter(c => OPEN_STATES.includes(c.status));
+  const rows = AVIC.claimsFor(s).filter(c => OPEN_STATES.has(c.status));
   let q = '', st = '';
   const t = UI.table('#queue-table', {
     rows,
@@ -65,7 +70,7 @@ Adjuster.queue = function (s) {
 
 Adjuster.decided = function (s) {
   UI.table('#decided-table', {
-    rows: AVIC.claimsFor(s).filter(c => ['approved', 'rejected', 'paid', 'closed'].includes(c.status)),
+    rows: AVIC.claimsFor(s).filter(c => DECIDED_STATES.has(c.status)),
     sortKey: 'reviewed_at',
     cols: [
       { label: 'Claim', key: 'claim_number', sortable: true, cell: c => '<a class="link mono" href="review.html?id=' + c.id + '">' + c.claim_number + '</a>' },
@@ -79,8 +84,8 @@ Adjuster.decided = function (s) {
 };
 
 Adjuster.estimates = function (s) {
-  const mineIds = AVIC.claimsFor(s).map(c => c.id);
-  const rows = AVIC.estimates.filter(e => mineIds.includes(e.claim_id));
+  const mineIds = new Set(AVIC.claimsFor(s).map(c => c.id));
+  const rows = AVIC.estimates.filter(e => mineIds.has(e.claim_id));
   UI.table('#est-table', {
     rows, sortKey: 'created_at',
     cols: [
@@ -242,15 +247,16 @@ Adjuster.review = function (s) {
   if (pay && ['pending', 'processing'].includes(pay.status)) {
     const mine = (+pay.approved_by) === (+AVIC.session().id);
     const adv = pay.status === 'pending' ? 'mark_processing' : 'mark_paid';
+    const advanceBtn = pay.status === 'pending' ? 'Mark processing' : 'Mark paid';
+    const payoutActions = mine
+      ? '<div class="btnrow"><button class="btn btn--sm btn--primary" id="p-advance">' + advanceBtn + '</button></div>'
+      : '<p class="muted small">Only the adjuster who approved this claim can advance the payout.</p>';
     payHost.innerHTML =
       '<dl class="kv"><dt>Reference</dt><dd class="mono">' + UI.esc(pay.reference_number) + '</dd>' +
       '<dt>Amount</dt><dd class="mono">' + UI.money(pay.amount) + '</dd>' +
       '<dt>Method</dt><dd>' + UI.esc(AVIC.labels.payment_method[pay.payment_method] || pay.payment_method) + '</dd>' +
       '<dt>Status</dt><dd>' + UI.badge(pay.status, AVIC.labels.payout_status) + '</dd></dl>' +
-      (mine
-        ? '<div class="btnrow"><button class="btn btn--sm btn--primary" id="p-advance">' +
-          (pay.status === 'pending' ? 'Mark processing' : 'Mark paid') + '</button></div>'
-        : '<p class="muted small">Only the adjuster who approved this claim can advance the payout.</p>');
+      payoutActions;
     const pa = document.getElementById('p-advance');
     if (pa) pa.onclick = () => UI.confirm(
       pay.status === 'pending' ? 'Start processing this payout?' : 'Mark this payout as paid?',

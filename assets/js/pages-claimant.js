@@ -6,11 +6,12 @@
    ============================================================ */
 
 const Claimant = {};
+const CLOSED_STATES = new Set(['paid', 'closed', 'rejected']);
 
 /* ---------------- dashboard ---------------- */
 Claimant.dashboard = function (s) {
   const mine = AVIC.claimsFor(s);
-  const open = mine.filter(c => !['paid', 'closed', 'rejected'].includes(c.status));
+  const open = mine.filter(c => !CLOSED_STATES.has(c.status));
   const paid = mine.filter(c => c.status === 'paid');
   const paidTotal = paid.reduce((t, c) => t + (c.approved_amount || 0), 0);
 
@@ -22,7 +23,7 @@ Claimant.dashboard = function (s) {
   document.getElementById('greeting').textContent = 'Hello, ' + s.name.split(' ')[0];
 
   /* active claim card */
-  const active = open.sort((a, b) => (b.submitted_at || '').localeCompare(a.submitted_at || ''))[0];
+  const active = [...open].sort((a, b) => (b.submitted_at || '').localeCompare(a.submitted_at || ''))[0];
   const host = document.getElementById('active-claim');
   if (active) {
     host.innerHTML =
@@ -61,13 +62,15 @@ Claimant.timelineHTML = function (c) {
     draft: c.created_at, submitted: c.submitted_at, under_review: c.submitted_at,
     approved: c.reviewed_at, rejected: c.reviewed_at, paid: c.resolved_at
   };
-  return '<ol class="timeline">' + ladder.map((st, i) =>
-    '<li class="' + (i < at ? 'is-done' : i === at ? 'is-current' : '') + '">' +
+  return '<ol class="timeline">' + ladder.map((st, i) => {
+    const cls = i < at ? 'is-done' : i === at ? 'is-current' : '';
+    return '<li class="' + cls + '">' +
       '<span class="dot"></span><div>' +
       '<div class="timeline__t">' + UI.esc(AVIC.labels.status[st]) + '</div>' +
       '<div class="timeline__d">' + (i <= at ? UI.dateTime(stamps[st]) : 'Not reached yet') + '</div>' +
       (st === c.status && c.rejection_reason ? '<div class="note note--stop" style="margin-top:8px">' + UI.esc(c.rejection_reason) + '</div>' : '') +
-      '</div></li>').join('') + '</ol>';
+      '</div></li>';
+  }).join('') + '</ol>';
 };
 
 /* ---------------- claims list ---------------- */
@@ -195,8 +198,8 @@ Claimant.policies = function (s) {
 /* ---------------- claim wizard ---------------- */
 Claimant.wizard = function (s) {
   const form = document.getElementById('wizard');
-  const steps = [].slice.call(document.querySelectorAll('.wizstep'));
-  const marks = [].slice.call(document.querySelectorAll('.step'));
+  const steps = Array.from(document.querySelectorAll('.wizstep'));
+  const marks = Array.from(document.querySelectorAll('.step'));
   let at = 0;
   const draft = { files: [] };
   const state = { claimId: +UI.qs('draft') || +UI.qs('add') || 0 };
@@ -252,7 +255,7 @@ Claimant.wizard = function (s) {
   }
 
   UI.counters(form);
-  const zone = UI.dropzone('#dropzone', '#filelist', files => { draft.files = files; });
+  UI.dropzone('#dropzone', '#filelist', files => { draft.files = files; });
 
   function show(i) {
     at = i;

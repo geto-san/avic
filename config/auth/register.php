@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8'); // tells the browser (and your fetch) to expect JSON back, always, even on errors.
-require __DIR__ . '/../db/db_connection.php';
+require_once __DIR__ . '/../db/db_connection.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { // Only allow POST requests for registration, rejects anything that isn't POST (e.g. someone just visiting the URL in a browser, which sends GET).
     http_response_code(405);

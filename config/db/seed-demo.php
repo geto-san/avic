@@ -24,15 +24,27 @@ declare(strict_types=1);
 require_once __DIR__ . '/db_connection.php';
 require_once __DIR__ . '/schema.php';
 
-$DEMO_PASSWORD = 'Demo2026!';
-$hash = password_hash($DEMO_PASSWORD, PASSWORD_DEFAULT);
+// Demo-only sign-in secret, deliberately public for the prototype (see README
+// "Demo accounts"). Point AVIC_DEMO_SECRET at your own value to protect a
+// shared demo database.
+$demoSecret = getenv('AVIC_DEMO_SECRET') ?: 'Demo2026!';
+$hash = password_hash($demoSecret, PASSWORD_DEFAULT);
+
+/* Re-used demo literals, hoisted so the seed data reads consistently. */
+const SEED_GARAGE_NAME    = 'Kigongo Motors';
+const SEED_GARAGE_PHONE   = '+256 414 250 771';
+const SEED_GARAGE_ADDRESS = 'Plot 14, Ntinda Industrial Area';
+const MIME_IMAGE_JPEG     = 'image/jpeg';
+const MIME_APP_PDF        = 'application/pdf';
+const SEED_REJECTED_AT    = '2026-08-18 16:40';
+const CLAIM_SUBMITTED     = 'Claim submitted';
 
 function seed_users(PDO $conn, string $hash): void
 {
     $users = [
         1 => ['Ahumuza Doreen', 'doreen@example.ug', '+256 772 114 902', 'claimant', 'active', '2025-11-02'],
         2 => ['Okot Brian', 'brian.okot@avic.ug', '+256 701 553 118', 'adjuster', 'active', '2025-06-14'],
-        3 => ['Kigongo Motors', 'desk@kigongomotors.ug', '+256 414 250 771', 'garage', 'active', '2025-08-21'],
+        3 => [SEED_GARAGE_NAME, 'desk@kigongomotors.ug', SEED_GARAGE_PHONE, 'garage', 'active', '2025-08-21'],
         5 => ['Mugisha Alex', 'alex.m@example.ug', '+256 758 209 663', 'claimant', 'active', '2026-02-17'],
         6 => ['Namara Pride', 'pride.n@example.ug', '+256 703 887 145', 'claimant', 'pending', '2026-09-12'],
         7 => ['Ssemwanga Autoworks', 'info@ssemwanga.ug', '+256 392 110 448', 'garage', 'active', '2026-09-10'],
@@ -101,7 +113,7 @@ function seed_claims(PDO $conn): void
          'theft', 28000000, null, 'NKW/2026/3390', 'submitted', '2026-09-10 07:44', null, null, '2026-09-09 19:30', null],
         [106, 'CLM-2026-00044', 9, 4, 2, '2026-08-11', 'Gulu town, Pece division',
          'Bonnet and engine bay fire after a short circuit while parked overnight.',
-         'fire', 9600000, 0, 'GLU/2026/0771', 'rejected', '2026-08-12 10:02', '2026-08-18 16:40', '2026-08-18 16:40', '2026-08-11 23:12',
+         'fire', 9600000, 0, 'GLU/2026/0771', 'rejected', '2026-08-12 10:02', SEED_REJECTED_AT, SEED_REJECTED_AT, '2026-08-11 23:12',
          'Policy POL-UG-65002 is a basic cover tier; fire damage is not a covered peril under this tier.'],
         [107, 'CLM-2026-00040', 5, 3, 8, '2026-07-30', 'Bweyogerere, Wakiso',
          'Flood water damage to the cabin and electricals after heavy rain.',
@@ -133,16 +145,16 @@ function seed_claims(PDO $conn): void
 function seed_documents(PDO $conn): void
 {
     $rows = [
-        [1, 101, 1, 'accident_photo', 'rear-bumper.jpg', 2415000, 'image/jpeg', 1, 2, '2026-09-06 10:10', '2026-09-04 18:44'],
-        [2, 101, 1, 'accident_photo', 'tail-light.jpg', 1880000, 'image/jpeg', 1, 2, '2026-09-06 10:11', '2026-09-04 18:45'],
-        [3, 101, 1, 'police_report', 'police-report.pdf', 640000, 'application/pdf', 0, null, null, '2026-09-05 08:50'],
-        [4, 101, 3, 'repair_estimate', 'kigongo-quote.pdf', 310000, 'application/pdf', 0, null, null, '2026-09-08 11:02'],
-        [5, 104, 5, 'accident_photo', 'side-panel.jpg', 3120000, 'image/jpeg', 1, 2, '2026-09-02 14:05', '2026-08-28 21:20'],
-        [6, 104, 5, 'police_report', 'lyantonde-pr.pdf', 720000, 'application/pdf', 0, null, null, '2026-08-29 07:55'],
-        [7, 102, 1, 'accident_photo', 'windscreen.jpg', 1450000, 'image/jpeg', 1, 2, '2026-07-22 10:40', '2026-07-19 15:02'],
-        [8, 105, 5, 'police_report', 'nakawa-theft.pdf', 505000, 'application/pdf', 0, null, null, '2026-09-10 07:40'],
-        [9, 107, 5, 'vehicle_photo', 'cabin-water.jpg', 2210000, 'image/jpeg', 1, 8, '2026-08-05 12:50', '2026-07-30 22:50'],
-        [10, 108, 1, 'accident_photo', 'wing-mirror.jpg', 980000, 'image/jpeg', 1, 2, '2026-08-30 11:20', '2026-08-22 18:10'],
+        [1, 101, 1, 'accident_photo', 'rear-bumper.jpg', 2415000, MIME_IMAGE_JPEG, 1, 2, '2026-09-06 10:10', '2026-09-04 18:44'],
+        [2, 101, 1, 'accident_photo', 'tail-light.jpg', 1880000, MIME_IMAGE_JPEG, 1, 2, '2026-09-06 10:11', '2026-09-04 18:45'],
+        [3, 101, 1, 'police_report', 'police-report.pdf', 640000, MIME_APP_PDF, 0, null, null, '2026-09-05 08:50'],
+        [4, 101, 3, 'repair_estimate', 'kigongo-quote.pdf', 310000, MIME_APP_PDF, 0, null, null, '2026-09-08 11:02'],
+        [5, 104, 5, 'accident_photo', 'side-panel.jpg', 3120000, MIME_IMAGE_JPEG, 1, 2, '2026-09-02 14:05', '2026-08-28 21:20'],
+        [6, 104, 5, 'police_report', 'lyantonde-pr.pdf', 720000, MIME_APP_PDF, 0, null, null, '2026-08-29 07:55'],
+        [7, 102, 1, 'accident_photo', 'windscreen.jpg', 1450000, MIME_IMAGE_JPEG, 1, 2, '2026-07-22 10:40', '2026-07-19 15:02'],
+        [8, 105, 5, 'police_report', 'nakawa-theft.pdf', 505000, MIME_APP_PDF, 0, null, null, '2026-09-10 07:40'],
+        [9, 107, 5, 'vehicle_photo', 'cabin-water.jpg', 2210000, MIME_IMAGE_JPEG, 1, 8, '2026-08-05 12:50', '2026-07-30 22:50'],
+        [10, 108, 1, 'accident_photo', 'wing-mirror.jpg', 980000, MIME_IMAGE_JPEG, 1, 2, '2026-08-30 11:20', '2026-08-22 18:10'],
     ];
     $stmt = $conn->prepare(
         'INSERT INTO claim_documents (id, claim_id, uploaded_by, doc_type, original_name, file_size, mime_type,
@@ -160,9 +172,9 @@ function seed_documents(PDO $conn): void
 function seed_estimates(PDO $conn): void
 {
     $rows = [
-        [1, 101, 3, 'Kigongo Motors', 'Plot 14, Ntinda Industrial Area', '+256 414 250 771', 4200000, 2100000, 550000, 6850000, 9, 'pending', null, '2026-09-08 11:00'],
-        [2, 107, 3, 'Kigongo Motors', 'Plot 14, Ntinda Industrial Area', '+256 414 250 771', 3100000, 1750000, 350000, 5200000, 6, 'approved', 'Electrical harness replacement reduced to a repair. Approved at UGX 4,800,000.', '2026-08-02 09:15'],
-        [3, 104, 3, 'Kigongo Motors', 'Plot 14, Ntinda Industrial Area', '+256 414 250 771', 9800000, 3900000, 600000, 14300000, 21, 'rejected', 'Front axle assembly quoted at new-part price; a reconditioned unit is acceptable. Please resubmit.', '2026-09-01 10:30'],
+        [1, 101, 3, SEED_GARAGE_NAME, SEED_GARAGE_ADDRESS, SEED_GARAGE_PHONE, 4200000, 2100000, 550000, 6850000, 9, 'pending', null, '2026-09-08 11:00'],
+        [2, 107, 3, SEED_GARAGE_NAME, SEED_GARAGE_ADDRESS, SEED_GARAGE_PHONE, 3100000, 1750000, 350000, 5200000, 6, 'approved', 'Electrical harness replacement reduced to a repair. Approved at UGX 4,800,000.', '2026-08-02 09:15'],
+        [3, 104, 3, SEED_GARAGE_NAME, SEED_GARAGE_ADDRESS, SEED_GARAGE_PHONE, 9800000, 3900000, 600000, 14300000, 21, 'rejected', 'Front axle assembly quoted at new-part price; a reconditioned unit is acceptable. Please resubmit.', '2026-09-01 10:30'],
     ];
     $stmt = $conn->prepare(
         'INSERT INTO garage_estimates (id, claim_id, garage_user_id, garage_name, garage_address, garage_phone,
@@ -257,18 +269,18 @@ function seed_settings(PDO $conn): void
 function seed_history(PDO $conn): void
 {
     $rows = [
-        [101, 1, 'draft', 'submitted', 'Claim submitted', '2026-09-05 09:22'],
+        [101, 1, 'draft', 'submitted', CLAIM_SUBMITTED, '2026-09-05 09:22'],
         [101, 2, 'submitted', 'under_review', 'Review started', '2026-09-05 11:00'],
-        [102, 1, 'draft', 'submitted', 'Claim submitted', '2026-07-19 15:10'],
+        [102, 1, 'draft', 'submitted', CLAIM_SUBMITTED, '2026-07-19 15:10'],
         [102, 2, 'submitted', 'approved', 'Approved at 1,100,000 UGX', '2026-07-22 11:02'],
-        [104, 1, 'draft', 'submitted', 'Claim submitted', '2026-08-29 08:05'],
+        [104, 1, 'draft', 'submitted', CLAIM_SUBMITTED, '2026-08-29 08:05'],
         [104, 2, 'submitted', 'pending_docs', 'More documents requested', '2026-09-02 14:20'],
-        [105, 5, 'draft', 'submitted', 'Claim submitted', '2026-09-10 07:44'],
-        [106, 9, 'draft', 'submitted', 'Claim submitted', '2026-08-12 10:02'],
+        [105, 5, 'draft', 'submitted', CLAIM_SUBMITTED, '2026-09-10 07:44'],
+        [106, 9, 'draft', 'submitted', CLAIM_SUBMITTED, '2026-08-12 10:02'],
         [106, 2, 'submitted', 'rejected', 'Not a covered peril', '2026-08-18 16:40'],
-        [107, 5, 'draft', 'submitted', 'Claim submitted', '2026-07-31 09:00'],
+        [107, 5, 'draft', 'submitted', CLAIM_SUBMITTED, '2026-07-31 09:00'],
         [107, 8, 'submitted', 'approved', 'Approved at 4,800,000 UGX', '2026-08-05 13:15'],
-        [108, 1, 'draft', 'submitted', 'Claim submitted', '2026-08-23 08:15'],
+        [108, 1, 'draft', 'submitted', CLAIM_SUBMITTED, '2026-08-23 08:15'],
         [108, 2, 'submitted', 'approved', 'Approved at 2,150,000 UGX', '2026-08-30 11:40'],
     ];
     /* dedupe-ish by natural key is awkward here; wipe history for seeded claims first */
@@ -295,5 +307,5 @@ if (PHP_SAPI === 'cli') {
     seed_notifications($conn);
     seed_settings($conn);
     seed_history($conn);
-    echo "Done. Any demo account signs in with password: $DEMO_PASSWORD\n";
+    echo 'Done. Any demo account signs in with password: ' . $demoSecret . "\n";
 }

@@ -8,8 +8,8 @@ const UI = {};
 
 /* ---------- escaping & formatting ---------- */
 UI.esc = v => String(v == null ? '' : v)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  .replaceAll('&', '&').replaceAll('<', '<')
+  .replaceAll('>', '>').replaceAll('"', '"');
 
 UI.money = function (n, withUnit) {
   if (n == null || n === '') return '—';
@@ -21,13 +21,13 @@ UI.moneyPlain = n => n == null ? '—' : 'UGX ' + Number(n).toLocaleString('en-U
 UI.date = function (d) {
   if (!d) return '—';
   const dt = new Date(String(d).replace(' ', 'T'));
-  if (isNaN(dt)) return d;
+  if (Number.isNaN(dt.getTime())) return d;
   return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 UI.dateTime = function (d) {
   if (!d) return '—';
   const dt = new Date(String(d).replace(' ', 'T'));
-  if (isNaN(dt)) return d;
+  if (Number.isNaN(dt.getTime())) return d;
   return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ', ' +
          dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 };
@@ -35,7 +35,7 @@ UI.ago = function (d) {
   if (!d) return '';
   const dt = new Date(String(d).replace(' ', 'T'));
   const mins = Math.round((Date.now() - dt) / 60000);
-  if (isNaN(mins)) return '';
+  if (Number.isNaN(mins)) return '';
   if (mins < 60) return mins + ' min ago';
   if (mins < 1440) return Math.round(mins / 60) + ' h ago';
   const days = Math.round(mins / 1440);
@@ -200,7 +200,7 @@ UI.dropzone = function (zoneSel, listSel, onChange) {
 
   function accept(files) {
     const maxMB = AVIC.settings.max_upload_mb;
-    [].forEach.call(files, f => {
+    Array.from(files).forEach( f => {
       if (f.size > maxMB * 1048576) { UI.toast(f.name + ' is over the ' + maxMB + ' MB limit.', 'bad'); return; }
       const ok = /^image\/(jpeg|png|webp)$|^application\/pdf$/.test(f.type);
       if (!ok) { UI.toast(f.name + ' must be a JPEG, PNG, WEBP or PDF.', 'bad'); return; }

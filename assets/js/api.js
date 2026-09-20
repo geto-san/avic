@@ -14,7 +14,7 @@ API.base = (typeof AVIC !== 'undefined' && AVIC.url) ? AVIC.url : f => f;
 API.request = async function (path, opts) {
   const init = opts || {};
   init.credentials = 'same-origin';
-  init.headers = Object.assign({}, init.headers);
+  init.headers = { ...init.headers };
 
   let res;
   try {

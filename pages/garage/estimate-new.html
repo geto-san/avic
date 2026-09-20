@@ -48,8 +48,8 @@
                 <div class="field"><label for="repair_days">Working days needed</label>
                   <input type="number" min="1" id="repair_days" name="repair_days" data-required>
                   <div class="err">How long will the repair take?</div></div>
-                <div class="field"><label>Quote total</label>
-                  <div class="ledger__v mono" id="est-total"><span class="unit">UGX</span>0</div></div>
+                <div class="field"><label for="est-total">Quote total</label>
+                  <output class="ledger__v mono" id="est-total"><span class="unit">UGX</span>0</output></div>
               </div>
               <div class="field">
                 <label for="breakdown">Breakdown of the work <span class="counter" id="bd-count"></span></label>
@@ -58,11 +58,11 @@
               </div>
 
               <div class="field">
-                <label>Attach the written quote</label>
-                <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Attach quote">
+                <label for="quote-file">Attach the written quote</label>
+                <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Attach quote" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.querySelector('input')?.click();}">
                   <div class="dropzone__t">Drop the quote here, or press to browse</div>
                   <div class="dropzone__d">PDF or a clear photo of the printed quote</div>
-                  <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
+                  <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" hidden id="quote-file" aria-label="Attach the written quote">
                 </div>
                 <div class="files" id="filelist"></div>
               </div>

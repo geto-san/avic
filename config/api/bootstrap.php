@@ -21,6 +21,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/_helpers.php';
 
+const NOTIF_BY_USER_SQL = 'SELECT * FROM notifications WHERE user_id = ';
+const ORDER_CREATED_DESC = ' ORDER BY created_at DESC';
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     api_json(405, ['message' => 'Method not allowed']);
 }
@@ -69,7 +72,7 @@ try {
         $payload['policies'] = fetch_policies($conn, $user['role'], $id, $policyIds, $claimIds);
         $payload['documents']= array_map('row_doc', fetch_rows($conn, "SELECT * FROM claim_documents WHERE claim_id IN ($inIds) ORDER BY uploaded_at"));
         $payload['estimates']= fetch_rows($conn, "SELECT * FROM garage_estimates WHERE claim_id IN ($inIds) ORDER BY created_at");
-        $payload['notifications'] = fetch_rows($conn, 'SELECT * FROM notifications WHERE user_id = ' . $id . ' ORDER BY created_at DESC');
+        $payload['notifications'] = fetch_rows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
         $payload['payouts']  = fetch_rows($conn, "SELECT * FROM payouts WHERE claim_id IN ($inIds)");
         $vignettes = [me_row($user)];
         foreach ($adjustIds as $aid) {
@@ -92,7 +95,7 @@ try {
         $payload['documents']= array_map('row_doc', fetch_rows($conn, "SELECT * FROM claim_documents WHERE claim_id IN ($inIds) ORDER BY uploaded_at"));
         $payload['estimates']= fetch_rows($conn, "SELECT * FROM garage_estimates WHERE claim_id IN ($inIds) ORDER BY created_at");
         $payload['workOrders'] = fetch_rows($conn, "SELECT * FROM work_orders WHERE claim_id IN ($inIds) ORDER BY assigned_at DESC");
-        $payload['notifications'] = fetch_rows($conn, 'SELECT * FROM notifications WHERE user_id = ' . $id . ' ORDER BY created_at DESC');
+        $payload['notifications'] = fetch_rows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
 
         $vignettes = [me_row($user)];
         foreach ($claimantIds as $cid) {
@@ -124,7 +127,7 @@ try {
             : [];
         $payload['workOrders'] = $orders;
         $payload['estimates']  = fetch_rows($conn, 'SELECT * FROM garage_estimates WHERE garage_user_id = ' . $id . ' ORDER BY created_at');
-        $payload['notifications'] = fetch_rows($conn, 'SELECT * FROM notifications WHERE user_id = ' . $id . ' ORDER BY created_at DESC');
+        $payload['notifications'] = fetch_rows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
         $payload['users']      = [me_row($user)];
     }
 
