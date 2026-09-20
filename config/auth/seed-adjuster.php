@@ -18,7 +18,7 @@ $email    = $argv[3] ?? 'adjuster@example.com';
 $phone    = $argv[4] ?? '+1 000 000 0000';
     echo 'Password for adjuster account: ';
     $password = trim(fgets(STDIN));
-}
+
 if (strlen($password) < 8) {
     fwrite(STDERR, "Password must be at least 8 characters.\n");
     exit(1);
