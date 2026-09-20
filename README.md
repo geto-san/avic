@@ -97,6 +97,18 @@ Requirements: PHP 8.x with PDO MySQL, MySQL/MariaDB.
    php -S 127.0.0.1:8080
    ```
 
+   The session cookie is `Secure` by default, so browsers only keep it over HTTPS
+   (Chrome and Firefox also allow it on `localhost`). If sign-in appears to work but you
+   are bounced straight back to the login page, your browser is dropping the cookie over
+   plain `http://`. For local development only, start the server with the opt-out set:
+
+   ```bash
+   # macOS / Linux / Git Bash
+   AVIC_ALLOW_INSECURE_COOKIES=1 php -S 127.0.0.1:8080
+   # Windows PowerShell
+   $env:AVIC_ALLOW_INSECURE_COOKIES = "1"; php -S 127.0.0.1:8080
+   ```
+
 5. Add an adjuster to sign in with (interactive, or pass the password as an argument):
 
    ```bash
