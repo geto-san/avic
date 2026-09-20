@@ -26,8 +26,12 @@ Garage.dashboard = function (s) {
       { label: 'Vehicle', cell: o => UI.esc(AVIC.garageViewOf(AVIC.claim(o.claim_id)).vehicle) },
       { label: 'Damage', cell: o => UI.esc(AVIC.labels.claim_type[AVIC.claim(o.claim_id).claim_type]) },
       { label: 'Quote due', cell: o => UI.sla(o.due) },
-      { label: 'State', cell: o => UI.badge(o.status === 'quoted' ? 'submitted' : (o.status === 'open' ? 'open' : 'pending_docs'),
-          { submitted: 'Quote sent', open: 'Awaiting your quote', pending_docs: 'Revision asked for' }) }
+{ label: 'State', cell: o => {
+          let mapped = 'pending_docs';
+          if (o.status === 'quoted') mapped = 'submitted';
+          else if (o.status === 'open') mapped = 'open';
+          return UI.badge(mapped, { submitted: 'Quote sent', open: 'Awaiting your quote', pending_docs: 'Revision asked for' });
+        } }
     ],
     emptyTitle: 'No work orders open',
     emptyBody: 'An adjuster assigns vehicles to your workshop from the claim review screen.'
@@ -47,10 +51,11 @@ Garage.workOrders = function (s) {
       { label: 'Damage type', cell: o => UI.esc(AVIC.labels.claim_type[AVIC.claim(o.claim_id).claim_type]) },
       { label: 'Assigned', cell: o => UI.date(o.assigned_at) },
       { label: 'Quote due', cell: o => UI.sla(o.due) },
-      { label: '', cell: o => o.status === 'closed'
-          ? '<span class="small muted">Closed</span>'
-          : '<a class="btn btn--sm btn--primary" href="estimate-new.html?claim=' + o.claim_id + '">' +
-            (o.status === 'quoted' ? 'Revise quote' : 'Quote this job') + '</a>' }
+      { label: '', cell: o => {
+          if (o.status === 'closed') return '<span class="small muted">Closed</span>';
+          const btnText = o.status === 'quoted' ? 'Revise quote' : 'Quote this job';
+          return '<a class="btn btn--sm btn--primary" href="estimate-new.html?claim=' + o.claim_id + '">' + btnText + '</a>';
+        } }
     ],
     emptyTitle: 'Nothing assigned to your workshop'
   });
@@ -142,7 +147,7 @@ Garage.estimateForm = function (s) {
           repair_days: +form.elements.repair_days.value || 0
         }).then(r => {
           if (btn) btn.disabled = false;
-          if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not send the quote.', 'bad');
+          if (!r.ok) return UI.toast((r.data?.message) || 'Could not send the quote.', 'bad');
           UI.toast('Quote sent. The adjuster will review it.', 'ok');
           setTimeout(() => location.href = 'estimates.html', 900);
         });

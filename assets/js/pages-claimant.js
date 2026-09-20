@@ -334,7 +334,7 @@ Claimant.wizard = function (s) {
     saveDraft();
     const data = Object.assign({ mode: 'draft' }, wizardCore(false));
     API.post('config/api/claims.php', data).then(r => {
-      if (!r.ok || !r.data) return UI.toast((r.data && r.data.message) || 'Could not save the draft.', 'bad');
+      if (!r.ok || !r.data) return UI.toast((r.data?.message) || 'Could not save the draft.', 'bad');
       state.claimId = r.data.id;
       UI.toast('Draft saved to your claims. You can finish it any time.', 'ok');
     });
@@ -378,7 +378,7 @@ Claimant.wizard = function (s) {
     const r = await API.postForm('config/api/claims.php', fd);
     btn.disabled = false;
 
-    if (!r.ok || !r.data) return UI.toast((r.data && r.data.message) || 'Could not submit the claim.', 'bad');
+    if (!r.ok || !r.data) return UI.toast((r.data?.message) || 'Could not submit the claim.', 'bad');
     try { sessionStorage.removeItem('avic.draft'); } catch (e) { /* ignore */ }
     UI.toast('Claim ' + r.data.claim_number + ' submitted — it is with an adjuster.', 'ok');
     setTimeout(() => location.href = 'claims.html', 900);

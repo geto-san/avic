@@ -108,7 +108,7 @@ Adjuster.estimates = function (s) {
         UI.confirm('Approve this estimate?', 'The garage will be told to start work at ' + UI.moneyPlain(
           (AVIC.estimates.find(x => x.id === id) || {}).total_estimate) + '.',
           () => API.post('config/api/estimates-decision.php', { estimate_id: id, decision: 'approve' }).then(r => {
-            if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not approve the estimate.', 'bad');
+            if (!r.ok) return UI.toast((r.data?.message) || 'Could not approve the estimate.', 'bad');
             AVIC.rerender(Adjuster.estimates);
             UI.toast('Estimate approved.', 'ok');
           }), 'Approve estimate');
@@ -123,7 +123,7 @@ Adjuster.estimates = function (s) {
           onConfirm: d => API.post('config/api/estimates-decision.php', {
             estimate_id: id, decision: 'send_back', notes: (d && d.why) || ''
           }).then(r => {
-            if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not send the estimate back.', 'bad');
+            if (!r.ok) return UI.toast((r.data?.message) || 'Could not send the estimate back.', 'bad');
             AVIC.rerender(Adjuster.estimates);
             UI.toast('Estimate returned to the garage.', 'ok');
           })
@@ -150,6 +150,19 @@ Adjuster.review = function (s) {
   document.getElementById('c-badge').innerHTML = UI.badge(c.status);
   document.getElementById('c-sla').innerHTML = UI.sla(c.due_date);
 
+  Adjuster.renderFacts(c, claimant, pol);
+  Adjuster.renderCoverChecks(c, pol);
+  Adjuster.setupDocumentViewer(docs);
+  Adjuster.renderEstimatePanel(c, est);
+  Adjuster.renderPayoutPanel(c);
+  Adjuster.setupGarageAssignment(c);
+  Adjuster.setupDecisionForm(c, est, pol);
+
+  UI.counters(document.getElementById('decision'));
+};
+
+/* ----- helper: facts panel ----- */
+Adjuster.renderFacts = function (c, claimant, pol) {
   document.getElementById('c-facts').innerHTML =
     '<dl class="kv">' +
       '<dt>Claimant</dt><dd>' + UI.esc(claimant.full_name) + ' · ' + UI.esc(claimant.phone) + '</dd>' +
@@ -162,8 +175,10 @@ Adjuster.review = function (s) {
       '<dt>Account</dt><dd>' + UI.esc(claimant.full_name) + ' has filed ' + AVIC.claims.filter(x => x.user_id === claimant.id).length + ' claims in total</dd>' +
       '<dt>What happened</dt><dd>' + UI.esc(c.incident_description) + '</dd>' +
     '</dl>';
+};
 
-  /* cover check — the plan flags this as a gap worth surfacing */
+/* ----- helper: cover checks ----- */
+Adjuster.renderCoverChecks = function (c, pol) {
   const checks = [];
   const inPeriod = c.incident_date >= pol.start_date && c.incident_date <= pol.end_date;
   checks.push({ ok: inPeriod, t: inPeriod ? 'Incident falls inside the policy period' : 'Incident is outside the policy period' });
@@ -174,8 +189,10 @@ Adjuster.review = function (s) {
   document.getElementById('c-checks').innerHTML = checks.map(k =>
     '<div class="notif"><div class="notif__bar" style="background:' + (k.ok ? 'var(--st-approved)' : 'var(--st-rejected)') + '"></div>' +
     '<div class="notif__m">' + UI.esc(k.t) + '</div></div>').join('');
+};
 
-  /* document viewer */
+/* ----- helper: document viewer ----- */
+Adjuster.setupDocumentViewer = function (docs) {
   let current = 0;
   function drawViewer() {
     const d = docs[current];
@@ -200,7 +217,7 @@ Adjuster.review = function (s) {
     const dv = document.getElementById('do-verify');
     if (dv) dv.onclick = () => {
       API.post('config/api/documents.php', { action: 'verify', id: d.id }).then(r => {
-        if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not verify the document.', 'bad');
+        if (!r.ok) return UI.toast((r.data?.message) || 'Could not verify the document.', 'bad');
         UI.toast('Document marked verified.', 'ok');
         AVIC.rerender(Adjuster.review);
       });
@@ -216,9 +233,11 @@ Adjuster.review = function (s) {
       docs.filter(d => d.is_verified).length + ' of ' + docs.length + ' documents verified';
   }
   drawDocs(); drawViewer();
+};
 
-  /* estimate side panel */
-  const wo = AVIC.workOrders.find(w => w.claim_id === c.id);
+/* ----- helper: estimate panel ----- */
+Adjuster.renderEstimatePanel = function (c, est) {
+  const wo = AVIC.workOrders?.find(w => w.claim_id === c.id);
   let estHtml;
   if (est) {
     estHtml = '<dl class="kv"><dt>Garage</dt><dd>' + UI.esc(est.garage_name) + '</dd>' +
@@ -226,8 +245,8 @@ Adjuster.review = function (s) {
       '<dt>Total quoted</dt><dd class="mono"><b>' + UI.money(est.total_estimate) + '</b></dd>' +
       '<dt>Status</dt><dd>' + UI.badge(est.status, { pending: 'Awaiting decision', approved: 'Approved', rejected: 'Sent back' }) + '</dd></dl>';
   } else if (wo) {
-    const g = AVIC.garages.find(x => x.id === wo.garage_user_id);
-    estHtml = '<p class="muted small">Assigned to ' + UI.esc(g ? g.full_name : 'the garage') +
+    const g = AVIC.garages?.find(x => x.id === wo.garage_user_id);
+    estHtml = '<p class="muted small">Assigned to ' + UI.esc(g?.full_name ?? 'the garage') +
       ' · <b>' + UI.badge(wo.status, { open: 'awaiting quote', quoted: 'quote sent', revision_requested: 'revision asked' }) + '</b></p>';
   } else {
     estHtml = '<p class="muted small">No garage estimate yet. Assign a garage to get a quote.</p>' +
@@ -239,9 +258,10 @@ Adjuster.review = function (s) {
       '<div class="field"><button class="btn btn--primary" id="do-assign">Assign garage</button></div></div>';
   }
   document.getElementById('c-estimate').innerHTML = estHtml;
-  /* payout: only the adjuster who approved (approved_by) may advance it.
-     pending -> processing -> completed, one step at a time — the endpoint
-     enforces the same single-step rule server-side. */
+};
+
+/* ----- helper: payout panel ----- */
+Adjuster.renderPayoutPanel = function (c) {
   const pay = AVIC.payoutFor(c.id);
   const payHost = document.getElementById('c-payout');
   if (pay && ['pending', 'processing'].includes(pay.status)) {
@@ -264,7 +284,7 @@ Adjuster.review = function (s) {
       () => API.post('config/api/payouts-update.php', {
         payout_id: pay.id, action: adv
       }).then(r => {
-        if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not advance the payout.', 'bad');
+        if (!r.ok) return UI.toast((r.data?.message) || 'Could not advance the payout.', 'bad');
         UI.toast('Payout advanced.', 'ok');
         AVIC.rerender(Adjuster.review);
       }), 'Advance payout');
@@ -277,19 +297,24 @@ Adjuster.review = function (s) {
   } else {
     payHost.innerHTML = '<p class="muted small">A payout is created when a claim is approved.</p>';
   }
+};
 
+/* ----- helper: garage assignment ----- */
+Adjuster.setupGarageAssignment = function (c) {
   const doAssign = document.getElementById('do-assign');
   if (doAssign) doAssign.onclick = () => {
     const gid = +document.getElementById('assign-garage').value;
     if (!gid) return UI.toast('Pick a garage first.', 'bad');
     API.post('config/api/claims-assign.php', { claim_id: c.id, garage_id: gid }).then(r => {
-      if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not assign the garage.', 'bad');
+      if (!r.ok) return UI.toast((r.data?.message) || 'Could not assign the garage.', 'bad');
       UI.toast('Work order sent to the garage.', 'ok');
       AVIC.rerender(Adjuster.review);
     });
   };
+};
 
-  /* decision form */
+/* ----- helper: decision form ----- */
+Adjuster.setupDecisionForm = function (c, est, pol) {
   const form = document.getElementById('decision');
   const amount = form.elements.recommended_amount;
   if (est) amount.value = est.total_estimate;
@@ -324,14 +349,12 @@ Adjuster.review = function (s) {
           amount: form.elements.decision.value === 'approve' ? +amount.value : null,
           review_notes: form.elements.review_notes.value
         }).then(r => {
-          if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not record the decision.', 'bad');
+          if (!r.ok) return UI.toast((r.data?.message) || 'Could not record the decision.', 'bad');
           UI.toast('Decision recorded. The claimant has been notified.', 'ok');
           setTimeout(() => location.href = 'queue.html', 1000);
         });
       }, 'Record decision');
   };
-
-  UI.counters(form);
 };
 
 AVIC.boot(function (s) {

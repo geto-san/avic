@@ -350,6 +350,7 @@ input[readonly], input[disabled], select[disabled] { background: var(--canvas-2)
 .dropzone {
   border:1.5px dashed var(--line); border-radius: var(--radius-lg);
   padding: 26px 18px; text-align:center; background: var(--canvas-2); cursor:pointer;
+  appearance:none; border:none; background:inherit; font:inherit; color:inherit;
 }
 .dropzone.is-over { border-color: var(--role); background: var(--role-wash); }
 .dropzone__t { font-weight:600; font-size:14px; }

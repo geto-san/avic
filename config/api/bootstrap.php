@@ -69,7 +69,7 @@ try {
         $inIds      = $claimIds ? implode(',', $claimIds) : '0';
 
         $payload['claims']   = array_map(static fn($c) => row_claim($c, $slaDays), $claims);
-        $payload['policies'] = fetch_policies($conn, $user['role'], $id, $policyIds, $claimIds);
+        $payload['policies'] = fetch_policies($conn, $user['role'], $id, $policyIds);
         $payload['documents']= array_map('row_doc', fetch_rows($conn, "SELECT * FROM claim_documents WHERE claim_id IN ($inIds) ORDER BY uploaded_at"));
         $payload['estimates']= fetch_rows($conn, "SELECT * FROM garage_estimates WHERE claim_id IN ($inIds) ORDER BY created_at");
         $payload['notifications'] = fetch_rows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
@@ -91,7 +91,7 @@ try {
         $inIds = $claimIds ? implode(',', $claimIds) : '0';
 
         $payload['claims']   = array_map(static fn($c) => row_claim($c, $slaDays), $claims);
-        $payload['policies'] = fetch_policies($conn, $user['role'], $id, $policyIds, $claimIds);
+        $payload['policies'] = fetch_policies($conn, $user['role'], $id, $policyIds);
         $payload['documents']= array_map('row_doc', fetch_rows($conn, "SELECT * FROM claim_documents WHERE claim_id IN ($inIds) ORDER BY uploaded_at"));
         $payload['estimates']= fetch_rows($conn, "SELECT * FROM garage_estimates WHERE claim_id IN ($inIds) ORDER BY created_at");
         $payload['workOrders'] = fetch_rows($conn, "SELECT * FROM work_orders WHERE claim_id IN ($inIds) ORDER BY assigned_at DESC");
@@ -198,7 +198,7 @@ function row_doc(array $d): array
     ];
 }
 
-function fetch_policies(PDO $conn, string $role, int $id, array $policyIds, array $claimIds): array
+function fetch_policies(PDO $conn, string $role, int $id, array $policyIds): array
 {
     if ($role === 'claimant') {
         $q = $conn->prepare('SELECT * FROM policies WHERE user_id = :id ORDER BY start_date DESC');

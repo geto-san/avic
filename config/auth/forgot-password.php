@@ -55,8 +55,7 @@ try {
         // fails. Log the link so the flow is still testable end to end
         // without a real mail server. Remove this in production.
         if (!$sent) {
-            $logEmail = str_replace(["\r", "\n"], '', $email);
-            error_log("[password reset] $logEmail -> $link");
+            error_log("[password reset] " . str_replace(["\r", "\n"], '', $email) . " -> $link");
         }
     }
 

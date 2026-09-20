@@ -55,12 +55,11 @@ $targets = [
     'mark_paid'       => ['processing' => 'completed'],
 ];
 if (!isset($targets[$action][$from])) {
-    api_json(409, [
-        'message' => $from === 'pending'
+        $msg = $from === 'pending'
             ? 'Mark it as processing first.'
-            : 'This payout has already been ' . ($from === 'completed' ? 'completed.' : 'advanced to ' . $from . '.'),
-    ]);
-}
+            : 'This payout has already been ' . ($from === 'completed' ? 'completed.' : 'advanced to ' . $from . '.');
+        api_json(409, ['message' => $msg]);
+    }
 $to = $targets[$action][$from];
 
 $conn->prepare(
