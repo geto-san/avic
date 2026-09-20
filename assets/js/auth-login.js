@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionStorage.removeItem('avic.intended');
       location.href = intended || AVIC.homeFor(s.role);
     } catch (err) {
+      console.error('[login] request failed:', err);
       note('stop', 'Network error — please try again.');
     } finally {
       btn.disabled = false;

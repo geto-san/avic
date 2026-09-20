@@ -19,10 +19,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    api_json(405, ['message' => 'Method not allowed']);
+    apiJson(405, ['message' => 'Method not allowed']);
 }
 
-$user = api_user(['claimant']);
+$user = apiUser(['claimant']);
 $uid  = (int)$user['id'];
 
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
@@ -40,14 +40,14 @@ if (str_starts_with($contentType, 'application/json')) {
 
 $mode = $in['mode'] ?? 'submit';
 if (!in_array($mode, ['draft', 'submit'], true)) {
-    api_json(400, ['message' => 'Unknown mode.']);
+    apiJson(400, ['message' => 'Unknown mode.']);
 }
 $existingId = isset($in['id']) ? (int)$in['id'] : 0;
 
 try {
     $claim = null;
     if ($existingId) {
-        $claim = api_can_see_claim($conn, $user, $existingId);
+        $claim = apiCanSeeClaim($conn, $user, $existingId);
     }
 
     $policyId = (int)($in['policy_id'] ?? 0);
@@ -86,13 +86,13 @@ try {
                   ['k' => 'incident_date', 'v' => $incidentDate], ['k' => 'incident_location', 'v' => $location],
                   ['k' => 'incident_description', 'v' => $description]] as $f) {
             if ($f['v'] === '' || $f['v'] === 0) {
-                api_json(422, ['message' => 'Fill in every required field.']);
+                apiJson(422, ['message' => 'Fill in every required field.']);
             }
         }
         $policy = $conn->prepare('SELECT * FROM policies WHERE id = :id AND user_id = :uid AND status = "active" LIMIT 1');
         $policy->execute(['id' => $policyId, 'uid' => $uid]);
         if (!$policy->fetch()) {
-            api_json(422, ['message' => 'Choose one of your own active policies.']);
+            apiJson(422, ['message' => 'Choose one of your own active policies.']);
         }
     }
 
@@ -108,9 +108,9 @@ try {
 
     /* ---- create or update the claim row ---- */
     if (!$claim) {
-        $claim_number = next_claim_number($conn);
+        $claim_number = nextClaimNumber($conn);
         $status = $mode === 'draft' ? 'draft' : 'submitted';
-        $adjuster = $mode === 'submit' ? least_busy_adjuster($conn) : null;
+        $adjuster = $mode === 'submit' ? leastBusyAdjuster($conn) : null;
         $stmt = $conn->prepare(
             'INSERT INTO claims (claim_number, user_id, policy_id, adjuster_id, incident_date, incident_location,
                                  incident_description, claim_type, estimated_damage, police_report_ref, status,
@@ -154,7 +154,7 @@ try {
     /* ---- document uploads ---- */
     $savedDocs = 0;
     if ($mode === 'submit' && $files) {
-        $savedDocs = save_uploads($conn, $claimId, $uid, files_to_arrays($files));
+        $savedDocs = saveUploads($conn, $claimId, $uid, filesToArrays($files));
     }
 
     if ($mode === 'submit') {
@@ -178,7 +178,7 @@ try {
         audit($conn, $user, 'claim.draft_saved', 'claim', $claimId, null, ['status' => 'draft']);
     }
 
-    api_json(200, [
+    apiJson(200, [
         'ok' => true,
         'id' => $claimId,
         'claim_number' => $claim_number,
@@ -186,10 +186,10 @@ try {
     ]);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    api_json(500, ['message' => 'Could not save the claim right now.']);
+    apiJson(500, ['message' => 'Could not save the claim right now.']);
 }
 
-function next_claim_number(PDO $conn): string
+function nextClaimNumber(PDO $conn): string
 {
     for ($i = 0; $i < 20; $i++) {
         $year = date('Y');
@@ -205,7 +205,7 @@ function next_claim_number(PDO $conn): string
 }
 
 /** Normalize the $_FILES['files'] structure to an index-array of arrays. */
-function files_to_arrays(array $files): array
+function filesToArrays(array $files): array
 {
     $out = [];
     if (!is_array($files['name'] ?? null)) {

@@ -39,7 +39,7 @@ const MIME_APP_PDF        = 'application/pdf';
 const SEED_REJECTED_AT    = '2026-08-18 16:40';
 const CLAIM_SUBMITTED     = 'Claim submitted';
 
-function seed_users(PDO $conn, string $hash): void
+function seedUsers(PDO $conn, string $hash): void
 {
     $users = [
         1 => ['Ahumuza Doreen', 'doreen@example.ug', '+256 772 114 902', 'claimant', 'active', '2025-11-02'],
@@ -70,7 +70,7 @@ function seed_users(PDO $conn, string $hash): void
     echo "  users          : " . count($users) . " demo accounts\n";
 }
 
-function seed_policies(PDO $conn): void
+function seedPolicies(PDO $conn): void
 {
     $rows = [
         [1, 1, 'POL-UG-88421', 'Toyota', 'Premio', 2016, 'JTD1234567890ABCD', 'UBG 442H', 'comprehensive', 42000000, 1850000, '2026-01-15', '2027-01-14', 'active'],
@@ -93,7 +93,7 @@ function seed_policies(PDO $conn): void
     echo "  policies       : " . count($rows) . "\n";
 }
 
-function seed_claims(PDO $conn): void
+function seedClaims(PDO $conn): void
 {
     $rows = [
         [101, 'CLM-2026-00042', 1, 1, 2, '2026-09-04', 'Jinja Road roundabout, Kampala',
@@ -142,7 +142,7 @@ function seed_claims(PDO $conn): void
     echo "  claims         : " . count($rows) . "\n";
 }
 
-function seed_documents(PDO $conn): void
+function seedDocuments(PDO $conn): void
 {
     $rows = [
         [1, 101, 1, 'accident_photo', 'rear-bumper.jpg', 2415000, MIME_IMAGE_JPEG, 1, 2, '2026-09-06 10:10', '2026-09-04 18:44'],
@@ -169,7 +169,7 @@ function seed_documents(PDO $conn): void
     echo "  documents      : " . count($rows) . " (metadata; uploads become real files)\n";
 }
 
-function seed_estimates(PDO $conn): void
+function seedEstimates(PDO $conn): void
 {
     $rows = [
         [1, 101, 3, SEED_GARAGE_NAME, SEED_GARAGE_ADDRESS, SEED_GARAGE_PHONE, 4200000, 2100000, 550000, 6850000, 9, 'pending', null, '2026-09-08 11:00'],
@@ -190,7 +190,7 @@ function seed_estimates(PDO $conn): void
     echo "  estimates      : " . count($rows) . "\n";
 }
 
-function seed_work_orders(PDO $conn): void
+function seedWorkOrders(PDO $conn): void
 {
     $rows = [
         [1, 101, 3, 2, '2026-09-06 12:00', '2026-09-13', 'quoted'],
@@ -208,7 +208,7 @@ function seed_work_orders(PDO $conn): void
     echo "  work orders    : " . count($rows) . "\n";
 }
 
-function seed_payouts(PDO $conn): void
+function seedPayouts(PDO $conn): void
 {
     $rows = [
         [1, 102, 1, 2, 1100000, 'mobile_money', 'Ahumuza Doreen', '+256 772 114 902', null, 'PAY-20260728-00113', 'completed', '2026-07-28 10:15', '2026-07-26 09:40'],
@@ -227,7 +227,7 @@ function seed_payouts(PDO $conn): void
     echo "  payouts        : " . count($rows) . "\n";
 }
 
-function seed_notifications(PDO $conn): void
+function seedNotifications(PDO $conn): void
 {
     $rows = [
         [1, 1, 101, 'doc_verified', 'Two photos verified', 'Okot Brian verified the rear bumper and tail light photos on CLM-2026-00042.', 0, '2026-09-06 10:12'],
@@ -249,7 +249,7 @@ function seed_notifications(PDO $conn): void
     echo "  notifications  : " . count($rows) . "\n";
 }
 
-function seed_settings(PDO $conn): void
+function seedSettings(PDO $conn): void
 {
     $rows = [
         'company_name' => 'AVIC Insurance Co.',
@@ -266,7 +266,7 @@ function seed_settings(PDO $conn): void
     echo "  settings       : " . count($rows) . "\n";
 }
 
-function seed_history(PDO $conn): void
+function seedHistory(PDO $conn): void
 {
     $rows = [
         [101, 1, 'draft', 'submitted', CLAIM_SUBMITTED, '2026-09-05 09:22'],
@@ -297,15 +297,15 @@ function seed_history(PDO $conn): void
 
 if (PHP_SAPI === 'cli') {
     echo "Seeding demo data into {$conn->query('SELECT DATABASE()')->fetchColumn()}...\n";
-    seed_users($conn, $hash);
-    seed_policies($conn);
-    seed_claims($conn);
-    seed_documents($conn);
-    seed_estimates($conn);
-    seed_work_orders($conn);
-    seed_payouts($conn);
-    seed_notifications($conn);
-    seed_settings($conn);
-    seed_history($conn);
+    seedUsers($conn, $hash);
+    seedPolicies($conn);
+    seedClaims($conn);
+    seedDocuments($conn);
+    seedEstimates($conn);
+    seedWorkOrders($conn);
+    seedPayouts($conn);
+    seedNotifications($conn);
+    seedSettings($conn);
+    seedHistory($conn);
     echo 'Done. Any demo account signs in with password: ' . $demoSecret . "\n";
 }

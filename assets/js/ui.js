@@ -41,7 +41,16 @@ UI.ago = function (d) {
   const days = Math.round(mins / 1440);
   return days < 30 ? days + ' d ago' : UI.date(d);
 };
-UI.size = b => b == null ? '—' : (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB');
+UI.compare = function (a, b) {
+  if (a > b) return 1;
+  if (a < b) return -1;
+  return 0;
+};
+
+UI.size = function (b) {
+  if (b == null) return '—';
+  return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
+};
 
 UI.badge = function (status, dict) {
   const map = dict || AVIC.labels.status;
@@ -51,7 +60,7 @@ UI.badge = function (status, dict) {
 /* days remaining against the 14-day SLA */
 UI.sla = function (due) {
   if (!due) return '<span class="muted">—</span>';
-  const days = Math.ceil((new Date(due) - new Date()) / 86400000);
+  const days = Math.ceil((new Date(due) - Date.now()) / 86400000);
   if (days < 0)  return '<span class="sla sla--late">' + Math.abs(days) + ' d over</span>';
   if (days <= 3) return '<span class="sla sla--warn">' + days + ' d left</span>';
   return '<span class="sla sla--ok">' + days + ' d left</span>';
@@ -127,8 +136,9 @@ UI.table = function (target, cfg) {
       view.sort((a, b) => {
         const av = col.sortValue ? col.sortValue(a) : a[sortKey];
         const bv = col.sortValue ? col.sortValue(b) : b[sortKey];
-        if (av == null) return 1; if (bv == null) return -1;
-        return (av > bv ? 1 : av < bv ? -1 : 0) * (sortDir === 'asc' ? 1 : -1);
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        return UI.compare(av, bv) * (sortDir === 'asc' ? 1 : -1);
       });
     }
     if (!view.length) {
@@ -136,9 +146,10 @@ UI.table = function (target, cfg) {
         '<div class="empty__d">' + (cfg.emptyBody || '') + '</div>' + (cfg.emptyAction || '') + '</div>';
       return;
     }
+    const arrow = sortDir === 'asc' ? '▲' : '▼';
     const head = cfg.cols.map(c =>
       '<th' + (c.sortable ? ' class="sortable" data-k="' + c.key + '"' : '') + (c.width ? ' style="width:' + c.width + '"' : '') + '>' +
-      UI.esc(c.label) + (sortKey === c.key ? ' <span class="arrow">' + (sortDir === 'asc' ? '▲' : '▼') + '</span>' : '') + '</th>').join('');
+      UI.esc(c.label) + (sortKey === c.key ? ' <span class="arrow">' + arrow + '</span>' : '') + '</th>').join('');
     const body = view.map(r =>
       '<tr' + (cfg.rowClass ? ' class="' + cfg.rowClass(r) + '"' : '') + '>' +
       cfg.cols.map(c => '<td>' + c.cell(r) + '</td>').join('') + '</tr>').join('');
@@ -215,8 +226,8 @@ UI.dropzone = function (zoneSel, listSel, onChange) {
     render();
   }
 
-  zone.addEventListener('click', () => input && input.click());
-  zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input && input.click(); } });
+  zone.addEventListener('click', () => input?.click());
+  zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input?.click(); } });
   if (input) input.addEventListener('change', e => accept(e.target.files));
   ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('is-over'); }));
   ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('is-over'); }));

@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const bar = document.getElementById('strength');
   form.elements.password.oninput = () => {
     const v = form.elements.password.value;
-    const score = [v.length >= 8, /[A-Z]/.test(v), /[0-9]/.test(v), /[^A-Za-z0-9]/.test(v)].filter(Boolean).length;
+    const score = [v.length >= 8, /[A-Z]/.test(v), /\d/.test(v), /[^A-Za-z0-9]/.test(v)].filter(Boolean).length;
     const words = ['Too short', 'Weak', 'Fair', 'Good', 'Strong'];
     bar.textContent = v ? words[score] : '';
   };
@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
       UI.toast(data.message || 'Password changed. Sign in again.', 'ok');
       setTimeout(() => location.href = 'login.html', 1200);
     } catch (err) {
+      console.error('[reset-password] request failed:', err);
       UI.toast('Network error — please try again.', 'bad');
     } finally {
       btn.disabled = false;

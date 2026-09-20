@@ -12,17 +12,17 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
-    api_json(405, ['message' => 'Method not allowed']);
+    apiJson(405, ['message' => 'Method not allowed']);
 }
 
-$user = api_user();
+$user = apiUser();
 $claimId = (int)($_GET['claim_id'] ?? 0);
 if (!$claimId) {
-    api_json(400, ['message' => 'Missing claim id.']);
+    apiJson(400, ['message' => 'Missing claim id.']);
 }
 
 try {
-    $claim = api_can_see_claim($conn, $user, $claimId);
+    $claim = apiCanSeeClaim($conn, $user, $claimId);
 
     $claimant = $conn->prepare('SELECT full_name, email, phone FROM users WHERE id = :id');
     $claimant->execute(['id' => $claim['user_id']]);
@@ -92,14 +92,14 @@ try {
     $name = 'claim-' . $claim['claim_number'] . '.pdf';
     header('Content-Type: application/pdf');
     header('Content-Disposition: attachment; filename="' . $name . '"');
-    echo pdf_text_document($lines);
+    echo pdfTextDocument($lines);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    api_json(500, ['message' => 'Could not build the PDF right now.']);
+    apiJson(500, ['message' => 'Could not build the PDF right now.']);
 }
 
 /** Minimal fixed-width text PDF (1 page, Courier). Returns the bytes. */
-function pdf_text_document(array $lines): string
+function pdfTextDocument(array $lines): string
 {
     $esc = static function (string $s): string {
         return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $s);

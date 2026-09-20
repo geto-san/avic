@@ -15,23 +15,23 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    api_json(405, ['message' => 'Method not allowed']);
+    apiJson(405, ['message' => 'Method not allowed']);
 }
 
-$user = api_user(['adjuster']);
+$user = apiUser(['adjuster']);
 $input = json_decode(file_get_contents('php://input'), true);
 if (!is_array($input)) {
-    api_json(400, ['message' => 'Invalid request body']);
+    apiJson(400, ['message' => 'Invalid request body']);
 }
 
 $payoutId = (int)($input['payout_id'] ?? 0);
 $action = (string)($input['action'] ?? '');
 
 if (!$payoutId) {
-    api_json(422, ['message' => 'A payout reference is required.']);
+    apiJson(422, ['message' => 'A payout reference is required.']);
 }
 if (!in_array($action, ['mark_processing', 'mark_paid'], true)) {
-    api_json(422, ['message' => 'Unknown payout action.']);
+    apiJson(422, ['message' => 'Unknown payout action.']);
 }
 
 $sel = $conn->prepare(
@@ -40,12 +40,12 @@ $sel = $conn->prepare(
 $sel->execute(['id' => $payoutId]);
 $payout = $sel->fetch();
 if (!$payout) {
-    api_json(404, ['message' => 'That payout does not exist.']);
+    apiJson(404, ['message' => 'That payout does not exist.']);
 }
 
 /* fail closed: only the adjuster who approved can advance the payout */
 if ((int)$payout['approved_by'] !== (int)$user['id']) {
-    api_json(403, ['message' => 'Only the adjuster who approved this claim may advance its payout.']);
+    apiJson(403, ['message' => 'Only the adjuster who approved this claim may advance its payout.']);
 }
 
 /* single-step forward state machine only */
@@ -55,11 +55,15 @@ $targets = [
     'mark_paid'       => ['processing' => 'completed'],
 ];
 if (!isset($targets[$action][$from])) {
-        $msg = $from === 'pending'
-            ? 'Mark it as processing first.'
-            : 'This payout has already been ' . ($from === 'completed' ? 'completed.' : 'advanced to ' . $from . '.');
-        api_json(409, ['message' => $msg]);
+    if ($from === 'pending') {
+        $msg = 'Mark it as processing first.';
+    } elseif ($from === 'completed') {
+        $msg = 'This payout has already been completed.';
+    } else {
+        $msg = 'This payout has already been advanced to ' . $from . '.';
     }
+    apiJson(409, ['message' => $msg]);
+}
 $to = $targets[$action][$from];
 
 $conn->prepare(
@@ -98,4 +102,4 @@ if ($to === 'completed') {
     )->execute(['id' => (int)$payout['claim_id']]);
 }
 
-api_json(200, ['ok' => true, 'status' => $to, 'processed_at' => date('Y-m-d H:i:s')]);
+apiJson(200, ['ok' => true, 'status' => $to, 'processed_at' => date('Y-m-d H:i:s')]);

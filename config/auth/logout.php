@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../session.php';
 
-avic_session();
+avicSession();
 
 $_SESSION = [];
 session_destroy();

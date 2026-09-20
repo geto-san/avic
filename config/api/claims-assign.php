@@ -13,26 +13,26 @@ declare(strict_types=1);
 require_once __DIR__ . '/_helpers.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    api_json(405, ['message' => 'Method not allowed']);
+    apiJson(405, ['message' => 'Method not allowed']);
 }
 
-$user = api_user(['adjuster']);
+$user = apiUser(['adjuster']);
 $input = json_decode(file_get_contents('php://input'), true);
 if (!is_array($input)) {
-    api_json(400, ['message' => 'Invalid request body']);
+    apiJson(400, ['message' => 'Invalid request body']);
 }
 
 $claimId = (int)($input['claim_id'] ?? 0);
 $garageId = (int)($input['garage_id'] ?? 0);
 
 try {
-    $claim = api_can_see_claim($conn, $user, $claimId);
+    $claim = apiCanSeeClaim($conn, $user, $claimId);
 
     $garage = $conn->prepare('SELECT id, full_name, garage_address, phone FROM users WHERE id = :id AND role = "garage" AND status = "active" LIMIT 1');
     $garage->execute(['id' => $garageId]);
     $g = $garage->fetch();
     if (!$g) {
-        api_json(422, ['message' => 'Choose an active garage.']);
+        apiJson(422, ['message' => 'Choose an active garage.']);
     }
 
     /* an open work order already exists? only closed ones may be redone */
@@ -41,7 +41,7 @@ try {
     $wo = $existing->fetch();
 
     if ($wo && $wo['status'] !== 'closed') {
-        api_json(409, ['message' => 'This claim is already with a garage.']);
+        apiJson(409, ['message' => 'This claim is already with a garage.']);
     }
 
     $due = date('Y-m-d', strtotime('+7 days'));
@@ -67,8 +67,8 @@ try {
         'Garage assigned',
         'A garage (' . $g['full_name'] . ') will inspect ' . $claim['claim_number'] . ' and quote the repair.');
 
-    api_json(200, ['ok' => true, 'work_order_id' => $orderId, 'claim_number' => $claim['claim_number']]);
+    apiJson(200, ['ok' => true, 'work_order_id' => $orderId, 'claim_number' => $claim['claim_number']]);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    api_json(500, ['message' => 'Could not assign the garage right now.']);
+    apiJson(500, ['message' => 'Could not assign the garage right now.']);
 }

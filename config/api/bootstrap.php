@@ -25,14 +25,14 @@ const NOTIF_BY_USER_SQL = 'SELECT * FROM notifications WHERE user_id = ';
 const ORDER_CREATED_DESC = ' ORDER BY created_at DESC';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
-    api_json(405, ['message' => 'Method not allowed']);
+    apiJson(405, ['message' => 'Method not allowed']);
 }
 
-$user = api_user();
+$user = apiUser();
 $id   = (int)$user['id'];
 
 try {
-    $settings = api_settings($conn);
+    $settings = apiSettings($conn);
     $slaDays  = (int)($settings['claims_sla_days'] ?? 14);
 
     $payload = [
@@ -68,18 +68,18 @@ try {
         $adjustIds  = array_values(array_filter(array_unique(array_map(static fn($c) => $c['adjuster_id'], $claims))));
         $inIds      = $claimIds ? implode(',', $claimIds) : '0';
 
-        $payload['claims']   = array_map(static fn($c) => row_claim($c, $slaDays), $claims);
-        $payload['policies'] = fetch_policies($conn, $user['role'], $id, $policyIds);
-        $payload['documents']= array_map('row_doc', fetch_rows($conn, "SELECT * FROM claim_documents WHERE claim_id IN ($inIds) ORDER BY uploaded_at"));
-        $payload['estimates']= fetch_rows($conn, "SELECT * FROM garage_estimates WHERE claim_id IN ($inIds) ORDER BY created_at");
-        $payload['notifications'] = fetch_rows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
-        $payload['payouts']  = fetch_rows($conn, "SELECT * FROM payouts WHERE claim_id IN ($inIds)");
-        $vignettes = [me_row($user)];
+        $payload['claims']   = array_map(static fn($c) => rowClaim($c, $slaDays), $claims);
+        $payload['policies'] = fetchPolicies($conn, $user['role'], $id, $policyIds);
+        $payload['documents']= array_map('rowDoc', fetchRows($conn, "SELECT * FROM claim_documents WHERE claim_id IN ($inIds) ORDER BY uploaded_at"));
+        $payload['estimates']= fetchRows($conn, "SELECT * FROM garage_estimates WHERE claim_id IN ($inIds) ORDER BY created_at");
+        $payload['notifications'] = fetchRows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
+        $payload['payouts']  = fetchRows($conn, "SELECT * FROM payouts WHERE claim_id IN ($inIds)");
+        $vignettes = [meRow($user)];
         foreach ($adjustIds as $aid) {
             $vignettes[] = ['id' => $aid, 'full_name' => null]; // filled below
         }
         $payload['users'] = $vignettes;
-        fill_multiple($conn, $payload['users'], $adjustIds);
+        fillMultiple($conn, $payload['users'], $adjustIds);
 
     } elseif ($user['role'] === 'adjuster') {
         $claims = $conn->prepare('SELECT c.*, u.phone AS claimant_phone FROM claims c JOIN users u ON u.id = c.user_id WHERE c.adjuster_id = :id ORDER BY c.created_at DESC');
@@ -90,19 +90,19 @@ try {
         $claimantIds = array_values(array_unique(array_map(static fn($c) => (int)$c['user_id'], $claims)));
         $inIds = $claimIds ? implode(',', $claimIds) : '0';
 
-        $payload['claims']   = array_map(static fn($c) => row_claim($c, $slaDays), $claims);
-        $payload['policies'] = fetch_policies($conn, $user['role'], $id, $policyIds);
-        $payload['documents']= array_map('row_doc', fetch_rows($conn, "SELECT * FROM claim_documents WHERE claim_id IN ($inIds) ORDER BY uploaded_at"));
-        $payload['estimates']= fetch_rows($conn, "SELECT * FROM garage_estimates WHERE claim_id IN ($inIds) ORDER BY created_at");
-        $payload['workOrders'] = fetch_rows($conn, "SELECT * FROM work_orders WHERE claim_id IN ($inIds) ORDER BY assigned_at DESC");
-        $payload['notifications'] = fetch_rows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
+        $payload['claims']   = array_map(static fn($c) => rowClaim($c, $slaDays), $claims);
+        $payload['policies'] = fetchPolicies($conn, $user['role'], $id, $policyIds);
+        $payload['documents']= array_map('rowDoc', fetchRows($conn, "SELECT * FROM claim_documents WHERE claim_id IN ($inIds) ORDER BY uploaded_at"));
+        $payload['estimates']= fetchRows($conn, "SELECT * FROM garage_estimates WHERE claim_id IN ($inIds) ORDER BY created_at");
+        $payload['workOrders'] = fetchRows($conn, "SELECT * FROM work_orders WHERE claim_id IN ($inIds) ORDER BY assigned_at DESC");
+        $payload['notifications'] = fetchRows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
 
-        $vignettes = [me_row($user)];
+        $vignettes = [meRow($user)];
         foreach ($claimantIds as $cid) {
             $vignettes[] = ['id' => $cid, 'full_name' => null, 'phone' => null, 'claimant_phone' => null];
         }
         $payload['users'] = $vignettes;
-        fill_multiple($conn, $payload['users'], $claimantIds);
+        fillMultiple($conn, $payload['users'], $claimantIds);
 
         /* active garages, for the assign-a-garage control */
         $garages = $conn->query('SELECT id, full_name FROM users WHERE role = "garage" AND status = "active" ORDER BY full_name');
@@ -126,21 +126,21 @@ try {
                 ->fetchAll()
             : [];
         $payload['workOrders'] = $orders;
-        $payload['estimates']  = fetch_rows($conn, 'SELECT * FROM garage_estimates WHERE garage_user_id = ' . $id . ' ORDER BY created_at');
-        $payload['notifications'] = fetch_rows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
-        $payload['users']      = [me_row($user)];
+        $payload['estimates']  = fetchRows($conn, 'SELECT * FROM garage_estimates WHERE garage_user_id = ' . $id . ' ORDER BY created_at');
+        $payload['notifications'] = fetchRows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
+        $payload['users']      = [meRow($user)];
     }
 
-    api_json(200, $payload);
+    apiJson(200, $payload);
 
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    api_json(500, ['message' => 'Could not load your data right now.']);
+    apiJson(500, ['message' => 'Could not load your data right now.']);
 }
 
 /* ------------------------------------------------------------------ */
 
-function me_row(array $user): array
+function meRow(array $user): array
 {
     return [
         'id' => (int)$user['id'], 'uuid' => $user['uuid'], 'full_name' => $user['name'],
@@ -149,7 +149,7 @@ function me_row(array $user): array
 }
 
 /** Shape a claims row for the front end (casts + computed SLA deadline). */
-function row_claim(array $c, int $slaDays): array
+function rowClaim(array $c, int $slaDays): array
 {
     return [
         'id'                  => (int)$c['id'],
@@ -170,17 +170,17 @@ function row_claim(array $c, int $slaDays): array
         'reviewed_at'         => $c['reviewed_at'],
         'resolved_at'         => $c['resolved_at'],
         'created_at'          => $c['created_at'],
-        'due_date'            => $c['submitted_at'] ? claim_due($c['submitted_at'], $slaDays) : null,
+        'due_date'            => $c['submitted_at'] ? claimDue($c['submitted_at'], $slaDays) : null,
     ];
 }
 
-function fetch_rows(PDO $conn, string $sql): array
+function fetchRows(PDO $conn, string $sql): array
 {
     return $conn->query($sql)->fetchAll();
 }
 
 /** Shape a claim_documents row for the UI (typed flags + file presence). */
-function row_doc(array $d): array
+function rowDoc(array $d): array
 {
     return [
         'id'           => (int)$d['id'],
@@ -198,7 +198,7 @@ function row_doc(array $d): array
     ];
 }
 
-function fetch_policies(PDO $conn, string $role, int $id, array $policyIds): array
+function fetchPolicies(PDO $conn, string $role, int $id, array $policyIds): array
 {
     if ($role === 'claimant') {
         $q = $conn->prepare('SELECT * FROM policies WHERE user_id = :id ORDER BY start_date DESC');
@@ -210,7 +210,7 @@ function fetch_policies(PDO $conn, string $role, int $id, array $policyIds): arr
 }
 
 /** Fill in the vignette placeholders for referenced users in one query. */
-function fill_multiple(PDO $conn, array &$vignettes, array $ids): void
+function fillMultiple(PDO $conn, array &$vignettes, array $ids): void
 {
     $ids = array_values(array_unique(array_map('intval', $ids)));
     if (!$ids) {

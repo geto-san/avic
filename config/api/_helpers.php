@@ -16,7 +16,7 @@ require_once __DIR__ . '/../session.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-function api_json(int $code, array $payload): void
+function apiJson(int $code, array $payload): void
 {
     http_response_code($code);
     echo json_encode($payload);
@@ -24,18 +24,18 @@ function api_json(int $code, array $payload): void
 }
 
 /** The signed-in user, or a JSON error when there is none / the role is wrong. */
-function api_user(array $roles = []): array
+function apiUser(array $roles = []): array
 {
-    avic_session();
+    avicSession();
     $u = $_SESSION['user'] ?? null;
     if (!$u) {
-        api_json(401, ['message' => 'Not signed in.']);
+        apiJson(401, ['message' => 'Not signed in.']);
     }
     if (($u['status'] ?? '') !== 'active') {
-        api_json(403, ['message' => 'This account is ' . ($u['status'] ?? 'unknown') . ' and cannot use the portal.']);
+        apiJson(403, ['message' => 'This account is ' . ($u['status'] ?? 'unknown') . ' and cannot use the portal.']);
     }
     if ($roles && !in_array($u['role'], $roles, true)) {
-        api_json(403, ['message' => 'Forbidden for this role.']);
+        apiJson(403, ['message' => 'Forbidden for this role.']);
     }
     return $u;
 }
@@ -53,7 +53,7 @@ function cnt($v): int
 }
 
 /** Claimant/SLA deadline = submitted_at + SLA days. */
-function claim_due(string $submittedAt, int $slaDays): ?string
+function claimDue(string $submittedAt, int $slaDays): ?string
 {
     if ($submittedAt === '') {
         return null;
@@ -62,7 +62,7 @@ function claim_due(string $submittedAt, int $slaDays): ?string
 }
 
 /** Flatten the settings table for the front end. */
-function api_settings(PDO $conn): array
+function apiSettings(PDO $conn): array
 {
     $rows = $conn->query('SELECT key_name, value FROM settings')->fetchAll();
     $out  = [
@@ -107,7 +107,7 @@ function audit(PDO $conn, array $user, string $action, ?string $entityType = nul
 }
 
 /** Look up an active adjuster with the fewest open claims (simple routing). */
-function least_busy_adjuster(PDO $conn): ?int
+function leastBusyAdjuster(PDO $conn): ?int
 {
     $row = $conn->query(
         'SELECT u.id FROM users u
@@ -121,19 +121,19 @@ function least_busy_adjuster(PDO $conn): ?int
 }
 
 /** Fetch a claim row and assert the caller is allowed to see it (role matrix). */
-function api_can_see_claim(PDO $conn, array $user, int $claimId): ?array
+function apiCanSeeClaim(PDO $conn, array $user, int $claimId): ?array
 {
     $c = $conn->prepare('SELECT * FROM claims WHERE id = :id LIMIT 1');
     $c->execute(['id' => $claimId]);
     $claim = $c->fetch();
     if (!$claim) {
-        api_json(404, ['message' => 'Claim not found.']);
+        apiJson(404, ['message' => 'Claim not found.']);
     }
     if ($user['role'] === 'claimant' && (int)$claim['user_id'] !== (int)$user['id']) {
-        api_json(403, ['message' => 'That claim belongs to another policy holder.']);
+        apiJson(403, ['message' => 'That claim belongs to another policy holder.']);
     }
     if ($user['role'] === 'adjuster' && (int)$claim['adjuster_id'] !== (int)$user['id']) {
-        api_json(403, ['message' => 'That claim is assigned to a different adjuster.']);
+        apiJson(403, ['message' => 'That claim is assigned to a different adjuster.']);
     }
     /* garages may only reach a claim they actually hold a work order for —
        the same rule uploads.php enforces, now enforced for every caller. */
@@ -143,7 +143,7 @@ function api_can_see_claim(PDO $conn, array $user, int $claimId): ?array
         );
         $wo->execute(['cid' => (int)$claim['id'], 'gid' => (int)$user['id']]);
         if (!$wo->fetch()) {
-            api_json(403, ['message' => 'Your workshop does not hold a work order for that claim.']);
+            apiJson(403, ['message' => 'Your workshop does not hold a work order for that claim.']);
         }
     }
     return $claim;
@@ -152,7 +152,7 @@ function api_can_see_claim(PDO $conn, array $user, int $claimId): ?array
 const UPLOAD_DIR = __DIR__ . '/../../uploads';
 
 /** Whitelist of MIME -> extension used for both validation and mime sniffing. */
-function upload_ext_from_mime(string $mime): ?string
+function uploadExtFromMime(string $mime): ?string
 {
     $map = [
         'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
@@ -166,10 +166,10 @@ function upload_ext_from_mime(string $mime): ?string
  * Files are stored under uploads/ with random names; the DB row records the
  * original name so the UI can keep showing it. Returns the count saved.
  */
-function save_uploads(PDO $conn, int $claimId, int $userId, array $files): int
+function saveUploads(PDO $conn, int $claimId, int $userId, array $files): int
 {
     $saved = 0;
-    foreach ($files as $i => $file) {
+    foreach ($files as $file) {
         if (($file['error'] ?? 4) !== 0 || !isset($file['tmp_name'])) {
             continue;
         }
@@ -182,8 +182,8 @@ function save_uploads(PDO $conn, int $claimId, int $userId, array $files): int
         }
         $finfo  = new finfo(FILEINFO_MIME_TYPE);
         $mime   = (string)$finfo->file($file['tmp_name']);
-        $ext    = upload_ext_from_mime($mime);
-        $docType = upload_doc_type($mime, (string)($file['name'] ?? ''));
+        $ext    = uploadExtFromMime($mime);
+        $docType = uploadDocType($mime, (string)($file['name'] ?? ''));
         if ($ext === null) {
             continue; // not a permitted file type — skipped, not fatal
         }
@@ -215,14 +215,21 @@ function save_uploads(PDO $conn, int $claimId, int $userId, array $files): int
 }
 
 /* Pick the doc_type bucket from the raw file name / mime. */
-function upload_doc_type(string $mime, string $name): string
+function uploadDocType(string $mime, string $name): string
 {
     $n = strtolower($name);
+    $type = 'vehicle_photo';
+
     if ($mime === 'application/pdf') {
-        if (str_contains($n, 'police')) return 'police_report';
-        if (str_contains($n, 'quote') || str_contains($n, 'estim')) return 'repair_estimate';
-        return 'other';
+        $type = 'other';
+        if (str_contains($n, 'police')) {
+            $type = 'police_report';
+        } elseif (str_contains($n, 'quote') || str_contains($n, 'estim')) {
+            $type = 'repair_estimate';
+        }
+    } elseif ($mime === 'image/jpeg' && str_contains($n, 'photo')) {
+        $type = 'accident_photo';
     }
-    if ($mime === 'image/jpeg' && str_contains($n, 'photo')) return 'accident_photo';
-    return 'vehicle_photo';
+
+    return $type;
 }

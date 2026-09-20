@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('sent').classList.remove('hidden');
       form.closest('.panel').classList.add('hidden');
     } catch (err) {
+      console.error('[forgot-password] request failed:', err);
       UI.toast('Network error — please try again.', 'bad');
     } finally {
       btn.disabled = false;

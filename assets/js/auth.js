@@ -17,7 +17,7 @@
     const bar = document.getElementById('strength');
     form.elements.password.oninput = () => {
       const v = form.elements.password.value;
-      const score = [v.length >= 8, /[A-Z]/.test(v), /[0-9]/.test(v), /[^A-Za-z0-9]/.test(v)].filter(Boolean).length;
+      const score = [v.length >= 8, /[A-Z]/.test(v), /\d/.test(v), /[^A-Za-z0-9]/.test(v)].filter(Boolean).length;
       const words = ['Too short', 'Weak', 'Fair', 'Good', 'Strong'];
       bar.textContent = v ? words[score] : '';
     };
