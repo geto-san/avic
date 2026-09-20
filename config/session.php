@@ -19,7 +19,7 @@ function avic_session(bool $remember = false): void
 
     session_name('AVICSESSID');
     session_set_cookie_params([
-        'lifetime' => $remember ? 1800 : 0,
+        'lifetime' => $remember ? 2592000 : 0,
         'path'     => '/',
         'domain'   => '',
         'secure'   => $secure,
