@@ -26,16 +26,20 @@ AVIC.pages.notifications = function (s) {
       '<div class="empty__d">Alerts about your claims will land here.</div></div>';
 
   host.querySelectorAll('[data-read]').forEach(b => b.onclick = () => {
-    const n = AVIC.notifications.find(x => x.id === +b.dataset.read);
-    n.is_read = 1;
-    AVIC.pages.notifications(s);
-    UI.toast('Marked as read.');
+    const id = +b.dataset.read;
+    API.post('config/api/notifications.php', { action: 'read', id }).then(r => {
+      if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not update the notification.', 'bad');
+      AVIC.rerender(AVIC.pages.notifications);
+      UI.toast('Marked as read.');
+    });
   });
 
   const all = document.getElementById('mark-all');
   if (all) all.onclick = () => {
-    AVIC.notificationsFor(s).forEach(n => n.is_read = 1);
-    AVIC.pages.notifications(s);
-    UI.toast('All notifications marked read.');
+    API.post('config/api/notifications.php', { action: 'read_all' }).then(r => {
+      if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not clear notifications.', 'bad');
+      AVIC.rerender(AVIC.pages.notifications);
+      UI.toast('All notifications marked read.');
+    });
   };
 };

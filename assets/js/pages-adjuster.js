@@ -99,18 +99,29 @@ Adjuster.estimates = function (s) {
     emptyTitle: 'No estimates on your claims',
     afterDraw(host) {
       host.querySelectorAll('[data-ok]').forEach(b => b.onclick = () => {
-        const e = AVIC.estimates.find(x => x.id === +b.dataset.ok);
-        UI.confirm('Approve this estimate?', 'The garage will be told to start work at ' + UI.moneyPlain(e.total_estimate) + '.',
-          () => { e.status = 'approved'; Adjuster.estimates(s); UI.toast('Estimate approved.', 'ok'); }, 'Approve estimate');
+        const id = +b.dataset.ok;
+        UI.confirm('Approve this estimate?', 'The garage will be told to start work at ' + UI.moneyPlain(
+          (AVIC.estimates.find(x => x.id === id) || {}).total_estimate) + '.',
+          () => API.post('config/api/estimates-decision.php', { estimate_id: id, decision: 'approve' }).then(r => {
+            if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not approve the estimate.', 'bad');
+            AVIC.rerender(Adjuster.estimates);
+            UI.toast('Estimate approved.', 'ok');
+          }), 'Approve estimate');
       });
       host.querySelectorAll('[data-back]').forEach(b => b.onclick = () => {
-        const e = AVIC.estimates.find(x => x.id === +b.dataset.back);
+        const id = +b.dataset.back;
         UI.modal({
           title: 'Send the estimate back',
           body: '<form><div class="field"><label for="why">What should the garage change?</label>' +
                 '<textarea id="why" name="why" placeholder="e.g. quote a reconditioned axle rather than a new one"></textarea></div></form>',
           confirm: 'Send back',
-          onConfirm: d => { e.status = 'rejected'; e.adjuster_notes = d.why; Adjuster.estimates(s); UI.toast('Estimate returned to the garage.', 'ok'); }
+          onConfirm: d => API.post('config/api/estimates-decision.php', {
+            estimate_id: id, decision: 'send_back', notes: (d && d.why) || ''
+          }).then(r => {
+            if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not send the estimate back.', 'bad');
+            AVIC.rerender(Adjuster.estimates);
+            UI.toast('Estimate returned to the garage.', 'ok');
+          })
         });
       });
     }
@@ -165,19 +176,29 @@ Adjuster.review = function (s) {
     const d = docs[current];
     const stage = document.getElementById('stage');
     if (!d) { stage.innerHTML = '<span>No documents attached</span>'; return; }
-    stage.innerHTML = d.mime_type.startsWith('image/')
-      ? '<div style="text-align:center;color:#63737f"><div style="font-size:44px">▣</div><div class="small">' + UI.esc(d.original_name) + '</div>' +
-        '<div class="tiny">Image preview — files are streamed through the PHP proxy in the built system</div></div>'
-      : '<div style="text-align:center;color:#63737f"><div style="font-size:44px">▤</div><div class="small">' + UI.esc(d.original_name) + '</div>' +
-        '<div class="tiny">PDF viewer</div></div>';
+    if (d.has_file) {
+      const url = AVIC.docUrl(d);
+      stage.innerHTML = d.mime_type.startsWith('image/')
+        ? '<img src="' + url + '" alt="' + UI.esc(d.original_name) + '" class="doc-img">'
+        : '<iframe src="' + url + '" class="doc-frame" title="' + UI.esc(d.original_name) + '"></iframe>';
+    } else {
+      stage.innerHTML = d.mime_type.startsWith('image/')
+        ? '<div style="text-align:center;color:#63737f"><div style="font-size:44px">▣</div><div class="small">' + UI.esc(d.original_name) + '</div>' +
+          '<div class="tiny">Seeded document — uploaded files preview here instead</div></div>'
+        : '<div style="text-align:center;color:#63737f"><div style="font-size:44px">▤</div><div class="small">' + UI.esc(d.original_name) + '</div>' +
+          '<div class="tiny">Seeded document</div></div>';
+    }
     document.getElementById('v-name').textContent = d.original_name + ' · ' + UI.size(d.file_size);
     document.getElementById('v-verify').innerHTML = d.is_verified
       ? '<span class="badge badge--verified">Verified</span>'
       : '<button class="btn btn--sm btn--primary" id="do-verify">Mark verified</button>';
     const dv = document.getElementById('do-verify');
     if (dv) dv.onclick = () => {
-      d.is_verified = 1; d.verified_by = s.id; d.verified_at = new Date().toISOString();
-      drawDocs(); drawViewer(); UI.toast('Document marked verified.', 'ok');
+      API.post('config/api/documents.php', { action: 'verify', id: d.id }).then(r => {
+        if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not verify the document.', 'bad');
+        UI.toast('Document marked verified.', 'ok');
+        AVIC.rerender(Adjuster.review);
+      });
     };
     document.querySelectorAll('.thumb').forEach((t, i) => t.classList.toggle('is-on', i === current));
   }
@@ -192,12 +213,38 @@ Adjuster.review = function (s) {
   drawDocs(); drawViewer();
 
   /* estimate side panel */
-  document.getElementById('c-estimate').innerHTML = est
-    ? '<dl class="kv"><dt>Garage</dt><dd>' + UI.esc(est.garage_name) + '</dd>' +
+  const wo = AVIC.workOrders.find(w => w.claim_id === c.id);
+  let estHtml;
+  if (est) {
+    estHtml = '<dl class="kv"><dt>Garage</dt><dd>' + UI.esc(est.garage_name) + '</dd>' +
       '<dt>Parts / labour / other</dt><dd class="mono">' + UI.money(est.parts_cost, false) + ' / ' + UI.money(est.labor_cost, false) + ' / ' + UI.money(est.other_cost, false) + '</dd>' +
       '<dt>Total quoted</dt><dd class="mono"><b>' + UI.money(est.total_estimate) + '</b></dd>' +
-      '<dt>Status</dt><dd>' + UI.badge(est.status, { pending: 'Awaiting decision', approved: 'Approved', rejected: 'Sent back' }) + '</dd></dl>'
-    : '<p class="muted small">No garage estimate yet. Assign a garage to get one.</p>';
+      '<dt>Status</dt><dd>' + UI.badge(est.status, { pending: 'Awaiting decision', approved: 'Approved', rejected: 'Sent back' }) + '</dd></dl>';
+  } else if (wo) {
+    const g = AVIC.garages.find(x => x.id === wo.garage_user_id);
+    estHtml = '<p class="muted small">Assigned to ' + UI.esc(g ? g.full_name : 'the garage') +
+      ' · <b>' + UI.badge(wo.status, { open: 'awaiting quote', quoted: 'quote sent', revision_requested: 'revision asked' }) + '</b></p>';
+  } else {
+    estHtml = '<p class="muted small">No garage estimate yet. Assign a garage to get a quote.</p>' +
+      '<div class="row2"><div class="field">' +
+      '<select id="assign-garage" aria-label="Choose a garage">' +
+        '<option value="">Choose a garage…</option>' +
+        AVIC.garages.map(g => '<option value="' + g.id + '">' + UI.esc(g.full_name) + '</option>').join('') +
+      '</select></div>' +
+      '<div class="field"><button class="btn btn--primary" id="do-assign">Assign garage</button></div></div>';
+  }
+  document.getElementById('c-estimate').innerHTML = estHtml;
+
+  const doAssign = document.getElementById('do-assign');
+  if (doAssign) doAssign.onclick = () => {
+    const gid = +document.getElementById('assign-garage').value;
+    if (!gid) return UI.toast('Pick a garage first.', 'bad');
+    API.post('config/api/claims-assign.php', { claim_id: c.id, garage_id: gid }).then(r => {
+      if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not assign the garage.', 'bad');
+      UI.toast('Work order sent to the garage.', 'ok');
+      AVIC.rerender(Adjuster.review);
+    });
+  };
 
   /* decision form */
   const form = document.getElementById('decision');
@@ -228,11 +275,16 @@ Adjuster.review = function (s) {
     const words = { approve: 'Approve this claim?', reject: 'Reject this claim?', request_docs: 'Ask for more documents?' };
     UI.confirm(words[form.elements.decision.value], 'The claimant is notified straight away and the decision is written to the audit log.',
       () => {
-        const map = { approve: 'approved', reject: 'rejected', request_docs: 'pending_docs' };
-        c.status = map[form.elements.decision.value];
-        if (form.elements.decision.value === 'approve') c.approved_amount = +amount.value;
-        UI.toast('Decision recorded in the prototype.', 'ok');
-        setTimeout(() => location.href = 'queue.html', 900);
+        API.post('config/api/claims-decision.php', {
+          claim_id: c.id,
+          decision: form.elements.decision.value,
+          amount: form.elements.decision.value === 'approve' ? +amount.value : null,
+          review_notes: form.elements.review_notes.value
+        }).then(r => {
+          if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not record the decision.', 'bad');
+          UI.toast('Decision recorded. The claimant has been notified.', 'ok');
+          setTimeout(() => location.href = 'queue.html', 1000);
+        });
       }, 'Record decision');
   };
 

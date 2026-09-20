@@ -1,0 +1,6 @@
+# AVIC runtime files (created on demand; served by config/uploads.php)
+uploads/
+
+# local caches / editor junk
+.DS_Store
+*.swp

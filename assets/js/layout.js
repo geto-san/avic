@@ -29,7 +29,7 @@ AVIC.shell = function (session) {
         '<div class="rail__brandsub">Vehicle insurance claims</div></div>' +
       '</div>' +
       '<nav class="nav" aria-label="' + UI.esc(role.label) + ' navigation">' + groups + '</nav>' +
-      '<div class="rail__foot">Prototype build · no live data</div>' +
+      '<div class="rail__foot">Live data · served from the API</div>' +
     '</aside>';
 
   /* ---------- topbar ---------- */
@@ -105,10 +105,20 @@ AVIC.shell = function (session) {
   }, 30000);
 };
 
-/* boot every authenticated page */
+/* boot every authenticated page: guard locally, then ask the server for
+   this session's data (which also confirms the session is still real). */
 AVIC.boot = function (render) {
   const s = AVIC.guard();
   if (!s) return;                       // guard is redirecting
-  AVIC.shell(s);
-  if (render) render(s);
+  AVIC.loadData().then(fresh => {
+    AVIC.shell(fresh || AVIC.session());
+    if (render) render(fresh || AVIC.session());
+  }).catch(() => { /* loadData has already redirected */ });
+};
+
+/* refresh the data behind the current page (after API writes) */
+AVIC.rerender = function (render) {
+  AVIC.refresh().then(fresh => {
+    if (render) render(fresh || AVIC.session());
+  });
 };

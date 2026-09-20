@@ -204,7 +204,7 @@ UI.dropzone = function (zoneSel, listSel, onChange) {
       if (f.size > maxMB * 1048576) { UI.toast(f.name + ' is over the ' + maxMB + ' MB limit.', 'bad'); return; }
       const ok = /^image\/(jpeg|png|webp)$|^application\/pdf$/.test(f.type);
       if (!ok) { UI.toast(f.name + ' must be a JPEG, PNG, WEBP or PDF.', 'bad'); return; }
-      const rec = { name: f.name, size: f.size, type: f.type, preview: null };
+      const rec = { file: f, name: f.name, size: f.size, type: f.type, preview: null };
       picked.push(rec);
       if (f.type.startsWith('image/')) {
         const r = new FileReader();

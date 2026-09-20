@@ -132,8 +132,20 @@ Garage.estimateForm = function (s) {
     UI.confirm('Send this quote to the adjuster?',
       'Total ' + UI.moneyPlain(total()) + ' over ' + (form.elements.repair_days.value || '—') + ' working days.',
       () => {
-        UI.toast('Quote sent in the prototype — nothing was saved.', 'ok');
-        setTimeout(() => location.href = 'estimates.html', 900);
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        API.post('config/api/estimates.php', {
+          claim_id: claimId,
+          parts_cost: +form.elements.parts_cost.value || 0,
+          labor_cost: +form.elements.labor_cost.value || 0,
+          other_cost: +form.elements.other_cost.value || 0,
+          repair_days: +form.elements.repair_days.value || 0
+        }).then(r => {
+          if (btn) btn.disabled = false;
+          if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not send the quote.', 'bad');
+          UI.toast('Quote sent. The adjuster will review it.', 'ok');
+          setTimeout(() => location.href = 'estimates.html', 900);
+        });
       }, 'Send quote');
   };
 };

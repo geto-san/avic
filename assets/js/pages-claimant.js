@@ -135,7 +135,8 @@ Claimant.detail = function (s) {
     '<div class="notif"><div class="notif__bar"></div><div style="flex:1">' +
       '<div class="notif__t">' + UI.esc(d.original_name) + '</div>' +
       '<div class="notif__m">' + UI.esc(AVIC.labels.doc_type[d.doc_type]) + ' · ' + UI.size(d.file_size) + ' · uploaded ' + UI.date(d.uploaded_at) + '</div>' +
-    '</div>' + (d.is_verified ? '<span class="badge badge--verified">Verified</span>' : '<span class="tag">Awaiting check</span>') + '</div>'
+    '</div>' + (d.is_verified ? '<span class="badge badge--verified">Verified</span>' : '<span class="tag">Awaiting check</span>') +
+    (d.has_file ? ' <a class="btn btn--sm" target="_blank" rel="noopener" href="' + AVIC.docUrl(d) + '">View</a>' : '') + '</div>'
   ).join('') : '<div class="empty"><div class="empty__d">No documents attached.</div></div>';
 
   const estHost = document.getElementById('c-estimate');
@@ -165,7 +166,7 @@ Claimant.detail = function (s) {
   } else if (c.status === 'draft') {
     acts.innerHTML = '<a class="btn btn--primary btn--sm" href="claim-new.html?draft=' + c.id + '">Continue this draft</a>';
   } else {
-    acts.innerHTML = '<button class="btn btn--sm" data-stub="Claim summary PDF">Download summary</button>';
+    acts.innerHTML = '<a class="btn btn--sm" href="' + AVIC.url('config/api/claims-pdf.php?claim_id=' + c.id) + '">Download summary</a>';
   }
 };
 
@@ -198,6 +199,7 @@ Claimant.wizard = function (s) {
   const marks = [].slice.call(document.querySelectorAll('.step'));
   let at = 0;
   const draft = { files: [] };
+  const state = { claimId: +UI.qs('draft') || +UI.qs('add') || 0 };
 
   const policies = AVIC.policiesFor(s);
   const sel = document.getElementById('policy_id');
@@ -231,6 +233,23 @@ Claimant.wizard = function (s) {
     document.getElementById('claim_type').value = ch.dataset.type;
     document.getElementById('claim_type').dispatchEvent(new Event('input', { bubbles: true }));
   });
+
+  /* resuming a server-side draft, or adding documents to a parked claim */
+  if (state.claimId) {
+    const c = AVIC.claim(state.claimId);
+    if (c) {
+      if (c.policy_id) sel.value = c.policy_id;
+      ['incident_date', 'incident_location', 'incident_description', 'police_report_ref'].forEach(k => {
+        if (form.elements[k] && c[k]) form.elements[k].value = c[k];
+      });
+      if (c.claim_type) {
+        const ch = document.querySelector('.choice[data-type="' + c.claim_type + '"]');
+        if (ch) ch.classList.add('is-on');
+        form.elements.claim_type.value = c.claim_type;
+      }
+      sel.onchange();
+    }
+  }
 
   UI.counters(form);
   const zone = UI.dropzone('#dropzone', '#filelist', files => { draft.files = files; });
@@ -291,7 +310,32 @@ Claimant.wizard = function (s) {
   }
   form.addEventListener('input', () => { stamp.textContent = 'Unsaved changes'; });
   setInterval(saveDraft, 60000);
-  document.getElementById('save-draft').onclick = () => { saveDraft(); UI.toast('Draft saved. Pick it up from My claims.', 'ok'); };
+  /* the claim-core fields, shared by draft and submit */
+  function wizardCore(forSubmit) {
+    const v = n => (form.elements[n] && form.elements[n].value) || '';
+    const parts = +v('parts_cost') || 0, labour = +v('labor_cost') || 0, other = +v('other_cost') || 0;
+    const fields = {
+      policy_id: v('policy_id'),
+      claim_type: v('claim_type'),
+      incident_date: v('incident_date'),
+      incident_location: v('incident_location'),
+      incident_description: v('incident_description'),
+      police_report_ref: v('police_report_ref'),
+    };
+    if (forSubmit || parts + labour + other > 0) fields.estimated_damage = String(parts + labour + other);
+    if (state.claimId) fields.id = String(state.claimId);
+    return fields;
+  }
+
+  document.getElementById('save-draft').onclick = () => {
+    saveDraft();
+    const data = Object.assign({ mode: 'draft' }, wizardCore(false));
+    API.post('config/api/claims.php', data).then(r => {
+      if (!r.ok || !r.data) return UI.toast((r.data && r.data.message) || 'Could not save the draft.', 'bad');
+      state.claimId = r.data.id;
+      UI.toast('Draft saved to your claims. You can finish it any time.', 'ok');
+    });
+  };
 
   /* restore a draft if one was left behind */
   const kept = sessionStorage.getItem('avic.draft');
@@ -315,13 +359,27 @@ Claimant.wizard = function (s) {
       body: '<p>Once submitted you cannot edit the details yourself. An adjuster will be assigned and you will get a decision within ' +
             AVIC.settings.claims_sla_days + ' days.</p>',
       confirm: 'Submit claim',
-      onConfirm: () => {
-        sessionStorage.removeItem('avic.draft');
-        UI.toast('Claim submitted in the prototype — nothing was sent to a server.', 'ok');
-        setTimeout(() => location.href = 'claims.html', 900);
-      }
+      onConfirm: () => submitClaim()
     });
   };
+
+  async function submitClaim() {
+    const btn = document.getElementById('submit');
+    const fd = new FormData();
+    fd.set('mode', 'submit');
+    const core = wizardCore(true);
+    Object.keys(core).forEach(k => fd.set(k, core[k]));
+    draft.files.forEach(rec => { if (rec.file) fd.append('files[]', rec.file, rec.name); });
+
+    btn.disabled = true;
+    const r = await API.postForm('config/api/claims.php', fd);
+    btn.disabled = false;
+
+    if (!r.ok || !r.data) return UI.toast((r.data && r.data.message) || 'Could not submit the claim.', 'bad');
+    try { sessionStorage.removeItem('avic.draft'); } catch (e) { /* ignore */ }
+    UI.toast('Claim ' + r.data.claim_number + ' submitted — it is with an adjuster.', 'ok');
+    setTimeout(() => location.href = 'claims.html', 900);
+  }
 
   show(0);
 };

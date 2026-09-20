@@ -4,12 +4,13 @@ A claims-handling portal prototype for an insurance company in Uganda. Claimants
 claims against their policies, adjusters review and settle them, and garages quote for
 repairs — three desks, one workflow.
 
-**Front end:** static HTML/CSS/JS prototype (role-based shell, mock data behind a
-single `AVIC.*` data layer).
+**Front end:** static HTML/CSS/JS multi-role shell. All data is fetched from the PHP
+API through `assets/js/api.js` and cached in the `AVIC.*` layer; nothing is held in a
+hardcoded file anymore.
 
-**Back end:** small PHP API on MySQL that backs authentication. Registration, login and
-logout are real; the rest of the portal still renders from in-browser mock data while it
-awaits the port to live endpoints (see `docs/hardcoded-dependencies.md`).
+**Back end:** small PHP API on MySQL that backs authentication, claims, policies,
+documents, garage estimates, work orders, notifications, payouts, the audit log and
+settings (see `docs/porting-to-php.md` for the mapping).
 
 ## Roles
 
@@ -37,13 +38,23 @@ active immediately; adjuster accounts are created by running the seed script.
   front end's `sessionStorage`, so the existing role guards and role-specific nav keep
   working; `AVIC.signOut()` clears both.
 
-## Not yet dynamic (prototype)
+## Live backend
 
-Everything beyond auth renders from `assets/js/mock-data.js` and mutates in-browser
-arrays. Claims are never sent to a server, documents are preview-only, decisions and
-estimates are lost on reload, and the notification/audit/payout data is fabricated.
-A file-by-file account of what must move to the database and endpoints lives in
-`docs/hardcoded-dependencies.md`.
+Claims, policies, documents, garage estimates, work orders, notifications, payouts, the
+audit log, and settings are served by real PHP+PDO endpoints under `config/api/` and
+persist to MySQL (`avic_portal`). Sign in at `config/auth/login.php` with any demo
+account (password `Demo2026!`) to exercise the whole flow for your role:
+
+- Claimants submit claims with declared incidents and document uploads (real files are
+  saved to `uploads/` and streamed back through `config/uploads.php`).
+- Adjusters see their assignment queue, record approve/reject/request-docs decisions,
+  approve or send back garage estimates, and assign garages to open work orders.
+- Garages submit (and revise) repair quotes; decisions, notifications and the audit log
+  are written to the database.
+
+Documents seeded via `config/db/seed-demo.php` are metadata-only (`file_path = ""`);
+they render a placeholder in the viewer until a real upload exists. Uploads are
+git-ignored runtime files, never committed.
 
 ## Run it
 
@@ -64,18 +75,29 @@ Requirements: PHP 8.x with PDO MySQL, MySQL/MariaDB.
    `adjuster_reviews`, `payouts`, `notifications`, `password_resets`, `audit_log`,
    `settings`. `users.role` is the enum `claimant | adjuster | garage`.
 
-   A schema builder is not yet committed — bring up the tables with one command per table
-   from the existing `mock-data.js` column names, or share the `SHOW CREATE TABLE`
-   exports if you have them locally.
+   Build it in one command (idempotent — safe to re-run, it skips existing tables):
 
-3. Serve the folder with PHP's built-in server (executes `.php`; a static server like
+   ```bash
+   php config/db/schema.php
+   ```
+
+3. Seed the demo accounts and sample claims (idempotent, upsert-style):
+
+   ```bash
+   php config/db/seed-demo.php
+   ```
+
+   Sign in with `geto`/`Demo2026!` (claimant), `brian.okot@avic.ug`/`Demo2026!`
+   (adjuster) or `desk@kigongomotors.ug`/`Demo2026!` (garage).
+
+4. Serve the folder with PHP's built-in server (executes `.php`; a static server like
    `python3 -m http.server` will return `501` for POST and serve PHP as text):
 
    ```bash
    php -S 127.0.0.1:8080
    ```
 
-4. Add an adjuster to sign in with (interactive, or pass the password as an argument):
+5. Add an adjuster to sign in with (interactive, or pass the password as an argument):
 
    ```bash
    php config/auth/seed-adjuster.php 'YourPassword123!'
@@ -89,14 +111,19 @@ Requirements: PHP 8.x with PDO MySQL, MySQL/MariaDB.
 ```
 config/
   db/db_connection.php     PDO connection (dev credentials)
+  db/schema.php            idempotent schema builder (skips existing tables)
+  db/seed-demo.php         demo accounts + sample data (upsert, re-runnable)
+  api/                     PHP+PDO JSON endpoints (auth, claims, decisions, estimates,
+                           documents, notifications, payouts, audit)
+  uploads.php              streaming upload proxy (role-gated, extension whitelisted)
   session.php              secure cookie/session bootstrap
   auth/register.php        sign-up endpoint
   auth/login.php           sign-in endpoint + lockout
   auth/logout.php          destroy session
-  auth/seed-adjuster.php   create an adjuster account from the CLI
 assets/
   css/avic.css             full stylesheet
-  js/mock-data.js          AVIC.users/claims/policies/... (the mock data layer)
+  js/api.js                API client (`request` / `post` / `postForm` + upload)
+  js/mock-data.js          AVIC.* layer: API responses cached in sessionStorage + role guard
   js/session.js            sessionStorage bridge + role guard + nav
   js/layout.js             rail/topbar shell built from the session role
   js/pages-*.js            per-desk renderers
@@ -107,8 +134,7 @@ pages/
   errors/                  403 / 404
 docs/
   avic-dev-plan.html       original design plan
-  porting-to-php.md        prototype -> PHP mapping notes
-  hardcoded-dependencies.md  everything still waiting on a real backend
+  porting-to-php.md        prototype -> PHP endpoint mapping (current, live)
 ```
 
 ## Security notes
