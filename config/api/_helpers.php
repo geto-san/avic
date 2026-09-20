@@ -135,6 +135,17 @@ function api_can_see_claim(PDO $conn, array $user, int $claimId): ?array
     if ($user['role'] === 'adjuster' && (int)$claim['adjuster_id'] !== (int)$user['id']) {
         api_json(403, ['message' => 'That claim is assigned to a different adjuster.']);
     }
+    /* garages may only reach a claim they actually hold a work order for —
+       the same rule uploads.php enforces, now enforced for every caller. */
+    if ($user['role'] === 'garage') {
+        $wo = $conn->prepare(
+            'SELECT id FROM work_orders WHERE claim_id = :cid AND garage_user_id = :gid LIMIT 1'
+        );
+        $wo->execute(['cid' => (int)$claim['id'], 'gid' => (int)$user['id']]);
+        if (!$wo->fetch()) {
+            api_json(403, ['message' => 'Your workshop does not hold a work order for that claim.']);
+        }
+    }
     return $claim;
 }
 

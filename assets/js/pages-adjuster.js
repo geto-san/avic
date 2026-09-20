@@ -234,6 +234,43 @@ Adjuster.review = function (s) {
       '<div class="field"><button class="btn btn--primary" id="do-assign">Assign garage</button></div></div>';
   }
   document.getElementById('c-estimate').innerHTML = estHtml;
+  /* payout: only the adjuster who approved (approved_by) may advance it.
+     pending -> processing -> completed, one step at a time — the endpoint
+     enforces the same single-step rule server-side. */
+  const pay = AVIC.payoutFor(c.id);
+  const payHost = document.getElementById('c-payout');
+  if (pay && ['pending', 'processing'].includes(pay.status)) {
+    const mine = (+pay.approved_by) === (+AVIC.session().id);
+    const adv = pay.status === 'pending' ? 'mark_processing' : 'mark_paid';
+    payHost.innerHTML =
+      '<dl class="kv"><dt>Reference</dt><dd class="mono">' + UI.esc(pay.reference_number) + '</dd>' +
+      '<dt>Amount</dt><dd class="mono">' + UI.money(pay.amount) + '</dd>' +
+      '<dt>Method</dt><dd>' + UI.esc(AVIC.labels.payment_method[pay.payment_method] || pay.payment_method) + '</dd>' +
+      '<dt>Status</dt><dd>' + UI.badge(pay.status, AVIC.labels.payout_status) + '</dd></dl>' +
+      (mine
+        ? '<div class="btnrow"><button class="btn btn--sm btn--primary" id="p-advance">' +
+          (pay.status === 'pending' ? 'Mark processing' : 'Mark paid') + '</button></div>'
+        : '<p class="muted small">Only the adjuster who approved this claim can advance the payout.</p>');
+    const pa = document.getElementById('p-advance');
+    if (pa) pa.onclick = () => UI.confirm(
+      pay.status === 'pending' ? 'Start processing this payout?' : 'Mark this payout as paid?',
+      'Advancing it is written to the audit log and the claimant is notified.',
+      () => API.post('config/api/payouts-update.php', {
+        payout_id: pay.id, action: adv
+      }).then(r => {
+        if (!r.ok) return UI.toast((r.data && r.data.message) || 'Could not advance the payout.', 'bad');
+        UI.toast('Payout advanced.', 'ok');
+        AVIC.rerender(Adjuster.review);
+      }), 'Advance payout');
+  } else if (pay) {
+    payHost.innerHTML =
+      '<dl class="kv"><dt>Reference</dt><dd class="mono">' + UI.esc(pay.reference_number) + '</dd>' +
+      '<dt>Amount</dt><dd class="mono">' + UI.money(pay.amount) + '</dd>' +
+      '<dt>Method</dt><dd>' + UI.esc(AVIC.labels.payment_method[pay.payment_method] || pay.payment_method) + '</dd>' +
+      '<dt>Status</dt><dd>' + UI.badge(pay.status, AVIC.labels.payout_status) + '</dd></dl>';
+  } else {
+    payHost.innerHTML = '<p class="muted small">A payout is created when a claim is approved.</p>';
+  }
 
   const doAssign = document.getElementById('do-assign');
   if (doAssign) doAssign.onclick = () => {

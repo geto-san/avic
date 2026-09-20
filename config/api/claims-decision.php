@@ -41,10 +41,27 @@ try {
         $policy = $conn->prepare('SELECT * FROM policies WHERE id = :id');
         $policy->execute(['id' => $claim['policy_id']]);
         $pol = $policy->fetch();
+        if (!$pol) {
+            /* fail closed: never approve against a policy that is not on file */
+            api_json(422, ['message' => 'There is no policy on file for this claim, so it cannot be approved.']);
+        }
         if ($amount === null || $amount <= 0) {
             api_json(422, ['message' => 'Set an amount to approve.']);
         }
-        if ($pol && $amount > (float)$pol['coverage_limit']) {
+        $inPeriod = ($claim['incident_date'] >= $pol['start_date']) && ($claim['incident_date'] <= $pol['end_date']);
+        if (!$inPeriod) {
+            api_json(422, [
+                'message' => 'The incident falls outside the policy period (' . substr($pol['start_date'], 0, 10) .
+                             ' to ' . substr($pol['end_date'], 0, 10) . '), so there is no cover.',
+            ]);
+        }
+        if (in_array($pol['coverage_type'], ['basic'], true) &&
+            in_array($claim['claim_type'], ['fire', 'theft', 'natural_disaster'], true)) {
+            api_json(422, [
+                'message' => 'This peril is not covered under the basic tier of the policy.',
+            ]);
+        }
+        if ($amount > (float)$pol['coverage_limit']) {
             api_json(422, ['message' => 'The approved amount exceeds the cover limit on this policy.']);
         }
     }
