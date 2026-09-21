@@ -145,8 +145,8 @@ pages/
   claimant/ adjuster/ garage/   the three desks
   errors/                  403 / 404
 docs/
-  hardcoded-dependencies.md  pre-port audit of what used to be mock data (historical)
-  porting-to-php.md          prototype -> PHP endpoint mapping (current, live)
+  hardcoded-dependencies.md  what the pre-backend prototype faked (historical)
+  porting-to-php.md          how the prototype's concepts map onto the live PHP endpoints
 ```
 
 ## Security notes

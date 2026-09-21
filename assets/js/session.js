@@ -1,6 +1,6 @@
 /* ============================================================
-   AVIC — mock session + role guard
-   The real keeps this state in a PHP session. Here it
+   AVIC — client-side session mirror + role guard
+   The server keeps the real session in a PHP cookie. Here it
    lives in sessionStorage, which is per browser tab: open two
    tabs and you can sit at two different desks at once without
    the roles bleeding into each other.
@@ -26,19 +26,6 @@ AVIC.storageOk = (function () {
 AVIC.session = function () {
   try { return JSON.parse(sessionStorage.getItem(AVIC.KEY)); }
   catch (e) { return null; }
-};
-
-AVIC.signIn = function (userId, opts) {
-  const u = AVIC.user(userId);
-  if (!u) return null;
-  const s = {
-    id: u.id, uuid: u.uuid, name: u.full_name, email: u.email,
-    role: u.role, status: u.status,
-    signedInAt: new Date().toISOString(),
-    impersonatedBy: (opts && opts.impersonatedBy) || null
-  };
-  try { sessionStorage.setItem(AVIC.KEY, JSON.stringify(s)); } catch (e) { /* see AVIC.storageOk */ }
-  return s;
 };
 
 /* Real login: the server already holds the session in a PHP cookie;

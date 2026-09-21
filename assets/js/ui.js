@@ -8,8 +8,8 @@ const UI = {};
 
 /* ---------- escaping & formatting ---------- */
 UI.esc = v => String(v == null ? '' : v)
-  .replaceAll('&', '&').replaceAll('<', '<')
-  .replaceAll('>', '>').replaceAll('"', '"');
+  .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
 UI.money = function (n, withUnit) {
   if (n == null || n === '') return '—';
@@ -115,11 +115,6 @@ UI.modal = function (opts) {
 
 UI.confirm = (title, body, onYes, label) =>
   UI.modal({ title, body: '<p>' + body + '</p>', confirm: label || 'Confirm', danger: true, onConfirm: onYes });
-
-/* prototype stub — used by every control that would need a server */
-UI.stub = function (what) {
-  UI.toast(what + ' — prototype only, nothing was saved.', 'ok');
-};
 
 /* ---------- table: render, sort, filter ---------- */
 UI.table = function (target, cfg) {
@@ -266,8 +261,3 @@ document.addEventListener('input', e => {
   if (f && String(e.target.value || '').trim()) f.classList.remove('has-error');
 });
 
-/* every control that would need a server is marked data-stub */
-document.addEventListener('click', e => {
-  const b = e.target.closest('[data-stub]');
-  if (b) { e.preventDefault(); UI.stub(b.dataset.stub); }
-});

@@ -1,21 +1,10 @@
 <?php
 declare(strict_types=1);
 
-header('Content-Type: application/json; charset=utf-8'); // tells the browser (and your fetch) to expect JSON back, always, even on errors.
 require_once __DIR__ . '/../db/db_connection.php';
+require_once __DIR__ . '/_helpers.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') { // Only allow POST requests for registration, rejects anything that isn't POST (e.g. someone just visiting the URL in a browser, which sends GET).
-    http_response_code(405);
-    echo json_encode(['message' => 'Method not allowed']);
-    exit;
-}
-
-$input = json_decode(file_get_contents('php://input'), true);
-if (!is_array($input)) {
-    http_response_code(400);
-    echo json_encode(['message' => 'Invalid request body']);
-    exit;
-}
+$input = authRequirePostJson();
 
 $errors = [];
 
@@ -57,27 +46,19 @@ if ($role === 'garage') {
 }
 
 if (!empty($errors)) {
-    http_response_code(400);
-    echo json_encode(['message' => 'Validation failed', 'errors' => $errors]);
-    exit;
+    authJson(400, ['message' => 'Validation failed', 'errors' => $errors]);
 }
 
 try {
     $check = $conn->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
     $check->execute(['email' => $email]);
     if ($check->fetch()) {
-        http_response_code(409);
-        echo json_encode(['message' => 'Validation failed', 'errors' => ['email' => 'That email is already registered.']]);
-        exit;
+        authJson(409, ['message' => 'Validation failed', 'errors' => ['email' => 'That email is already registered.']]);
     }
 
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
     $status = 'active';
-    $uuid = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-        random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff),
-        random_int(0, 0x0fff) | 0x4000,
-        random_int(0, 0x3fff) | 0x8000,
-        random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff));
+    $uuid = uuidv4();
 
     $insert = $conn->prepare(
         'INSERT INTO users (uuid, role, full_name, email, phone, password_hash, garage_address, trading_licence, status)
@@ -95,10 +76,8 @@ try {
         'status'          => $status,
     ]);
 
-    http_response_code(201);
-    echo json_encode(['message' => 'Account created']);
+    authJson(201, ['message' => 'Account created']);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    http_response_code(500);
-    echo json_encode(['message' => 'Something went wrong. Please try again later.']);
+    authJson(500, ['message' => 'Something went wrong. Please try again later.']);
 }

@@ -1,56 +1,48 @@
-# Porting this prototype to the PHP build
+# Prototype → PHP endpoint mapping
 
-The prototype was written against the dev plan's own vocabulary, so most of the work is
-moving logic from the browser to the server rather than rewriting it.
+The original plan sketched a full MVC rewrite (`views/`, `middleware/`, `models/`,
+`core/`). That turned out to be more than the app needed: the static HTML/CSS/JS shell
+already separates markup from logic cleanly, so the port kept it and replaced only the
+data layer — the front end still renders the same pages, now filled from real JSON
+endpoints instead of a hardcoded array.
 
-## File-by-file mapping
+## What each prototype concept became
 
-| Prototype | Becomes |
+| Prototype concept | Lives now in |
 |---|---|
-| `pages/<role>/*.html` | `views/<area>/*.php` rendered into `views/layouts/app.php` |
-| `assets/js/layout.js` | `views/partials/sidebar.php` + `views/partials/topbar.php` |
-| `AVIC.nav[role]` | the role-aware link list inside `sidebar.php` |
-| `AVIC.guard()` | `middleware/AuthMiddleware.php` + `middleware/RoleMiddleware.php` |
-| `AVIC.session()` / `signIn` / `signOut` | `core/Session.php` + `core/Auth.php` |
-| `AVIC.claimsFor()` etc. | scoped finders on `models/Claim.php` (`forUser`, `forAdjuster`) |
-| `AVIC.canSeeClaim()` | an authorisation check called at the top of every claim action |
-| `AVIC.garageViewOf()` | a `SELECT` that names only the columns a garage may read |
-| `UI.validate` / `data-required` | `core/Validator.php`, with the JS kept as a first pass |
-| `UI.dropzone` | `core/FileUploader.php` behind the same drag-drop zone |
-| `UI.table` sorting and filters | `core/Paginator.php` plus `ORDER BY` / `WHERE` on the query |
-| `data-stub` buttons | the real endpoints (PDF export, CSV, email, password change) |
-| `mock-data.js` | `schema.sql` — the arrays already carry the column names |
+| `AVIC.nav[role]`, rail/topbar | `assets/js/layout.js` (unchanged — still client-side, still role-scoped) |
+| `AVIC.guard()` | still `assets/js/session.js` for instant UI redirects, backed by `apiUser()` in `config/api/_helpers.php` for the real, unspoofable check on every write |
+| `AVIC.session()` / `startServerSession` / `signOut` | mirrors the PHP session (`config/session.php`) into `sessionStorage`; the PHP session is the actual gate |
+| Auth (login/register/forgot/reset) | `config/auth/*.php`, sharing `config/auth/_helpers.php` |
+| `AVIC.claimsFor()` / `canSeeClaim()` / `garageViewOf()` | role-scoped SQL in `config/api/bootstrap.php`, `config/api/_helpers.php::apiCanSeeClaim()` |
+| `UI.validate` / `data-required` | still a client-side first pass; every endpoint under `config/api/` re-validates and re-authorizes server-side |
+| `UI.dropzone` (preview only) | real uploads via `config/api/_helpers.php::saveUploads()`, streamed back through `config/uploads.php` |
+| `UI.table` sorting/filters | still client-side over the rows `bootstrap.php` already scoped to the signed-in user |
+| `data-stub` buttons | removed; every one now calls a real endpoint (see table below) |
+| `mock-data.js` arrays | `config/db/schema.php` (tables) + `config/db/seed-demo.php` (demo rows) |
 
-## Things the prototype fakes, and what replaces them
+## Endpoints
 
-- **Authentication.** No password is checked. Replace with bcrypt verification, session
-  regeneration on login, and the login rate limit from section 10 of the plan.
-- **Session storage.** `sessionStorage` becomes a PHP session with an HTTP-only,
-  SameSite, HTTPS-only cookie.
-- **File uploads.** Files are read with `FileReader` for preview only and never leave the
-  browser. Replace with `$_FILES`, real MIME sniffing, UUID renaming, and the
-  `public/file.php` streaming proxy so `uploads/` is never reachable by URL.
-- **Notification polling.** The badge re-counts on a timer. Point it at
-  `GET /api/notifications` instead.
-- **State changes.** Approving a claim or releasing a payout mutates an in-memory array
-  and is lost on reload. Each becomes a transaction that writes the row, appends to
-  `claim_status_history`, writes to `audit_log`, and queues a notification and an email.
-- **CSRF.** There are no tokens in the forms. Add the hidden `_csrf_token` field and the
-  `CsrfMiddleware` check on every POST.
+| Endpoint | Does |
+|---|---|
+| `config/api/bootstrap.php` | GET — hydrates the front end's `AVIC.*` arrays for the signed-in role |
+| `config/api/claims.php` | save/submit a claim (with file uploads) |
+| `config/api/claims-assign.php` | adjuster assigns a garage to a claim |
+| `config/api/claims-decision.php` | adjuster approves/rejects/requests documents |
+| `config/api/claims-pdf.php` | claim summary as a downloadable document |
+| `config/api/documents.php` | mark a document verified |
+| `config/api/estimates.php` | garage submits/revises a repair quote |
+| `config/api/estimates-decision.php` | adjuster approves or sends back a quote |
+| `config/api/notifications.php` | mark one/all notifications read |
+| `config/api/payouts-update.php` | update a payout's status |
+| `config/uploads.php` | role-gated streaming proxy for uploaded files |
 
-## Checks the UI shows but the server must own
+## Still worth doing
 
-The adjuster review screen displays three cover checks and refuses an approved amount over
-the policy limit, and the payout form does the same. These are conveniences, not controls.
-The same three checks — policy active at the incident date, peril covered by the tier,
-amount within the remaining cover limit — have to be enforced in `AdjusterController` and
-`PayoutController` before anything is written, along with the duplicate-incident check
-flagged in section 15 of the plan.
-
-## Suggested order
-
-1. Layout, auth and the role middleware, using the prototype's markup as the view files.
-2. Claim wizard and document upload, keeping the client-side steps and validation as-is.
-3. Adjuster queue and review, then garage quoting.
-4. Admin: users, payouts, audit log, settings.
-5. The stubbed exports and emails, then the security pass.
+- **CSRF tokens** once the API takes real `<form>` submissions instead of JSON-only
+  `fetch()` calls (see the Security notes in the README for why JSON-only is
+  reasonably CSRF-hard today).
+- **Server-side cover checks** (policy active at the incident date, peril covered by
+  the tier, amount within the remaining limit) are shown in the UI as guidance; make
+  sure `claims-decision.php` and `payouts-update.php` enforce them before writing,
+  alongside a duplicate-incident check.

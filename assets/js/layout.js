@@ -10,7 +10,7 @@ AVIC.shell = function (session) {
   const page = document.body.dataset.page || '';
 
   /* ---------- rail ---------- */
-  const groups = (AVIC.nav[role] || []).map(g =>
+  const groups = (AVIC.nav[session.role] || []).map(g =>
     '<div class="nav__group"><div class="nav__title">' + UI.esc(g.group) + '</div>' + g.items.map(i => {
       const n = typeof i.count === 'function' ? i.count(session) : null;
       return '<a href="' + dir + i.href + '"' + (i.page === page ? ' class="is-active" aria-current="page"' : '') + '>' +

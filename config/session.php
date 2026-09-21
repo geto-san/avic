@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Boot a secure PHP session for the.
+ * Boot a secure PHP session for the app.
  *
  * The cookie is HTTP-only (never readable by JS), SameSite=Lax (a cross-site
  * POST form cannot ride the session), and Secure by default, so it is only

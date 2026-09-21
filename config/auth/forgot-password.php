@@ -9,23 +9,16 @@ declare(strict_types=1);
  * discover which emails are registered.
  */
 
-header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../db/db_connection.php';
+require_once __DIR__ . '/_helpers.php';
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['message' => 'Method not allowed']);
-    exit;
-}
-
-$input = json_decode(file_get_contents('php://input'), true);
-$email = strtolower(trim((string)((is_array($input) ? $input['email'] : null) ?? '')));
+$input = authRequirePostJson();
+$email = strtolower(trim((string)($input['email'] ?? '')));
 
 $generic = ['message' => 'If that address has an account, a reset link is on its way.'];
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    echo json_encode($generic); // still generic — don't confirm the format check even
-    exit;
+    authJson(200, $generic); // still generic — don't confirm the format check either
 }
 
 try {
@@ -64,8 +57,8 @@ try {
         }
     }
 
-    echo json_encode($generic);
+    authJson(200, $generic);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    echo json_encode($generic); // stay generic even on failure — see note above
+    authJson(200, $generic); // stay generic even on failure — see note above
 }

@@ -52,13 +52,7 @@ try {
         'settings'      => $settings,
     ];
 
-    $rowsOf = function (PDOStatement $stmt): ?array {
-        return $stmt === null ? null : $stmt->fetchAll();
-    };
-
     /* ---------------- role data ---------------- */
-    $meStmt   = fn() => $conn->prepare('SELECT * FROM users WHERE id = :id')->execute(['id' => $id]);
-
     if ($user['role'] === 'claimant') {
         $claims = $conn->prepare('SELECT c.*, u.phone AS claimant_phone FROM claims c JOIN users u ON u.id = c.user_id WHERE c.user_id = :id ORDER BY c.created_at DESC');
         $claims->execute(['id' => $id]);

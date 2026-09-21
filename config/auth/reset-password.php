@@ -10,34 +10,22 @@ declare(strict_types=1);
  * same person requested and never opened.
  */
 
-header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../db/db_connection.php';
+require_once __DIR__ . '/_helpers.php';
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['message' => 'Method not allowed']);
-    exit;
-}
-
-$input     = json_decode(file_get_contents('php://input'), true);
-$token     = (string)((is_array($input) ? $input['token'] : null) ?? '');
-$password  = (string)((is_array($input) ? $input['password'] : null) ?? '');
-$password2 = (string)((is_array($input) ? $input['password2'] : null) ?? '');
+$input     = authRequirePostJson();
+$token     = (string)($input['token'] ?? '');
+$password  = (string)($input['password'] ?? '');
+$password2 = (string)($input['password2'] ?? '');
 
 if ($token === '') {
-    http_response_code(400);
-    echo json_encode(['message' => 'This link is invalid or has expired.']);
-    exit;
+    authJson(400, ['message' => 'This link is invalid or has expired.']);
 }
 if (strlen($password) < 8) {
-    http_response_code(422);
-    echo json_encode(['message' => 'Password must be at least 8 characters.']);
-    exit;
+    authJson(422, ['message' => 'Password must be at least 8 characters.']);
 }
 if ($password !== $password2) {
-    http_response_code(422);
-    echo json_encode(['message' => 'Passwords do not match.']);
-    exit;
+    authJson(422, ['message' => 'Passwords do not match.']);
 }
 
 try {
@@ -46,9 +34,7 @@ try {
     $reset = $row->fetch();
 
     if (!$reset) {
-        http_response_code(400);
-        echo json_encode(['message' => 'This link is invalid or has expired.']);
-        exit;
+        authJson(400, ['message' => 'This link is invalid or has expired.']);
     }
 
     $conn->prepare('UPDATE users SET password_hash = :hash WHERE email = :email')
@@ -58,9 +44,8 @@ try {
     // same address, are dead now regardless of which one was clicked.
     $conn->prepare('DELETE FROM password_resets WHERE email = :email')->execute(['email' => $reset['email']]);
 
-    echo json_encode(['message' => 'Password changed. Sign in with your new password.']);
+    authJson(200, ['message' => 'Password changed. Sign in with your new password.']);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    http_response_code(500);
-    echo json_encode(['message' => 'Something went wrong. Please try again later.']);
+    authJson(500, ['message' => 'Something went wrong. Please try again later.']);
 }
