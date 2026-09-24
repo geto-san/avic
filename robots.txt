@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /pages/claimant/
+Disallow: /pages/adjuster/
+Disallow: /pages/garage/
+Disallow: /pages/errors/
+Disallow: /pages/auth/reset-password.html
+Disallow: /config/
