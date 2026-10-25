@@ -21,6 +21,13 @@ declare(strict_types=1);
  * uploaded through the portal are real files served from /config/uploads.php.
  */
 
+/* The demo data has a publicly known sign-in password. Never let it near a
+   production database by accident (set AVIC_ALLOW_DEMO_SEED=1 to override). */
+if (strtolower((string)getenv('AVIC_ENV')) === 'production' && getenv('AVIC_ALLOW_DEMO_SEED') !== '1') {
+    fwrite(STDERR, "Refusing to seed demo data: AVIC_ENV=production. Set AVIC_ALLOW_DEMO_SEED=1 if you really mean it.\n");
+    exit(1);
+}
+
 require_once __DIR__ . '/db_connection.php';
 require_once __DIR__ . '/schema.php';
 

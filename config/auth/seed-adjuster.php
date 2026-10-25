@@ -6,7 +6,7 @@ require_once __DIR__ . '/../db/db_connection.php';
 $password = $argv[1] ?? 'DemoPassword1!';
 if ($password === 'DemoPassword1!') {
     echo 'Password for adjuster account: ';
-    $password = trim(fgets(STDIN));
+    $password = trim((string)fgets(STDIN));
 }
 if (strlen($password) < 8) {
     fwrite(STDERR, "Password must be at least 8 characters.\n");
@@ -16,14 +16,6 @@ if (strlen($password) < 8) {
 $fullName = $argv[2] ?? 'Demo Adjuster';
 $email    = $argv[3] ?? 'adjuster@example.com';
 $phone    = $argv[4] ?? '+1 000 000 0000';
-    echo 'Password for adjuster account: ';
-    $password = trim(fgets(STDIN));
-
-if (strlen($password) < 8) {
-    fwrite(STDERR, "Password must be at least 8 characters.\n");
-    exit(1);
-}
-
 try {
     $check = $conn->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
     $check->execute(['email' => $email]);
