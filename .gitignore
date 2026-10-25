@@ -4,3 +4,8 @@ uploads/
 # local caches / editor junk
 .DS_Store
 *.swp
+
+# Composer / PHPUnit
+/vendor/
+.phpunit.result.cache
+.phpunit.cache/

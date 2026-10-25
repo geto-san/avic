@@ -78,10 +78,11 @@ saved back to a draft, and a decision can't be recorded twice on the same claim.
 
 ## Run it
 
-Requirements: PHP 8.x with PDO MySQL, MySQL/MariaDB.
+Requirements: PHP 8.1+ with `pdo_mysql`, `mbstring` and `fileinfo`; MariaDB 11.3+ (or
+MySQL / an older MariaDB — see the collation note below).
 
-1. Create the database and user (credentials live in `config/db/db_connection.php`, all
-   dev defaults):
+1. Create the database and user. The connection is configured through `AVIC_DB_*`
+   environment variables (see `.env.example`); with none set you get these dev defaults:
 
    ```sql
    CREATE DATABASE IF NOT EXISTS avic_portal;
@@ -90,16 +91,22 @@ Requirements: PHP 8.x with PDO MySQL, MySQL/MariaDB.
    FLUSH PRIVILEGES;
    ```
 
-2. Create the schema. The tables mirror the columns the prototype already uses:
-   `users`, `login_attempts`, `claims`, `policies`, `claim_documents`, `garage_estimates`,
-   `adjuster_reviews`, `payouts`, `notifications`, `password_resets`, `audit_log`,
-   `settings`. `users.role` is the enum `claimant | adjuster | garage`.
-
-   Build it in one command (idempotent — safe to re-run, it skips existing tables):
+2. Create the schema with the migration runner (idempotent — only applies what is pending):
 
    ```bash
-   php config/db/schema.php
+   php bin/migrate.php            # apply pending migrations
+   php bin/migrate.php --status   # list applied / pending
    ```
+
+   The tables live in `database/migrations/*.sql` (applied once each, in filename order,
+   and recorded in `schema_migrations`). `php config/db/schema.php` still works — it just
+   runs the same runner. To change the schema, add `0002_something.sql`; never edit one
+   that has been applied. An existing database built by the old `schema.php` is adopted
+   automatically (the baseline only creates what is missing).
+
+   **MySQL / MariaDB older than 11.3:** the baseline uses MariaDB's `utf8mb4_uca1400_ai_ci`
+   collation. On other servers set `AVIC_DB_COLLATION=utf8mb4_unicode_ci` (or any collation
+   your server has) before migrating.
 
 3. Seed the demo accounts and sample claims (idempotent, upsert-style):
 
@@ -153,23 +160,52 @@ Requirements: PHP 8.x with PDO MySQL, MySQL/MariaDB.
 
    (`.htaccess` blocks `/uploads/` on Apache; `php -S` ignores it.)
 
-## Tests
+## Development
 
-`tests/phase0-smoke.sh` is an interim end-to-end smoke test (curl + the DB client) for
-the claim lifecycle, decision/payout guards and the upload location. The header of the
-script says how to run it against a freshly seeded database. It is replaced by a real
-PHPUnit suite in Phase 1.
+```bash
+composer install               # PHPUnit (dev only — the app itself has no dependencies)
+composer lint                  # php -l every PHP file
+composer test:unit             # fast, no database
+composer test:feature          # drives the real app over HTTP against a test database
+composer test                  # both
+```
+
+The feature tests need their own database, which they **wipe and re-seed before every
+test** — so the name must end in `_test` (the suite refuses to run otherwise):
+
+```sql
+CREATE DATABASE IF NOT EXISTS avic_test;
+GRANT ALL PRIVILEGES ON avic_test.* TO 'avic'@'localhost';
+```
+
+Point the tests elsewhere with `AVIC_TEST_DB_HOST` / `_PORT` / `_NAME` / `_USER` / `_PASS`
+(and `AVIC_DB_COLLATION` on a server without `uca1400`). They start a throwaway PHP server on
+a free port with its own upload folder and stop it when PHPUnit exits. Run them on Linux or
+macOS; the concurrency tests need `setsid` (they skip themselves without it).
+
+CI (`.github/workflows/ci.yml`) lints, applies the migrations to an empty MariaDB 11.4,
+and runs both suites on PHP 8.1 – 8.4. Run `composer update` once and commit the resulting
+`composer.lock` so CI and your machine use the same PHPUnit.
+
+### Configuration
+
+All settings are environment variables — see `.env.example` for the full list
+(`AVIC_DB_*`, `AVIC_UPLOAD_DIR`, `AVIC_DB_COLLATION`, `AVIC_ENV`). Setting
+`AVIC_ENV=production` makes the app refuse to start on the built-in dev database password
+and makes `seed-demo.php` refuse to run.
 
 ## Project layout
 
 ```
 config/
-  db/db_connection.php     PDO connection (dev credentials)
-  db/schema.php            idempotent schema builder (skips existing tables)
+  db/db_connection.php     PDO connection, configured from AVIC_DB_* environment variables
+  db/migrator.php          SQL-file migration runner (used by bin/migrate.php and schema.php)
+  db/schema.php            thin wrapper that runs the migrations (kept for the old command)
   db/seed-demo.php         demo accounts + sample data (upsert, re-runnable)
   api/                     PHP+PDO JSON endpoints (auth, claims, decisions, estimates,
                            documents, notifications, payouts, audit)
   api/claim-state.php      claim lifecycle rules + transaction helper (see Claim lifecycle)
+  api/upload-files.php     where uploads live on disk (AVIC_UPLOAD_DIR) + safe path lookup
   uploads.php              streaming upload proxy (role-gated, extension whitelisted)
   session.php              secure cookie/session bootstrap
   auth/register.php        sign-up endpoint
@@ -187,8 +223,18 @@ pages/
   auth/                    sign-in, registration, password screens
   claimant/ adjuster/ garage/   the three desks
   errors/                  403 / 404
+bin/
+  migrate.php              apply database migrations (--status to list)
+  lint.php                 php -l every PHP file
+database/
+  migrations/              numbered *.sql schema migrations
 tests/
-  phase0-smoke.sh          interim smoke test (see Tests)
+  Unit/                    pure-function tests, no database
+  Feature/                 HTTP tests against the real app + a test database
+  Support/                 test server, HTTP client, test-database helpers
+.github/workflows/ci.yml   lint + tests on every push
+.env.example               every environment variable the app reads
+composer.json  phpunit.xml.dist
 docs/
   hardcoded-dependencies.md  what the pre-backend prototype faked (historical)
   porting-to-php.md          how the prototype's concepts map onto the live PHP endpoints
