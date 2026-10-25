@@ -323,6 +323,18 @@ Adjuster.setupGarageAssignment = function (c) {
 /* ----- helper: decision form ----- */
 Adjuster.setupDecisionForm = function (c, est, pol) {
   const form = document.getElementById('decision');
+
+  /* a claim that is already approved / rejected / paid takes no further decision
+     (the server refuses it with a 409 — say so instead of showing a dead form) */
+  if (!OPEN_STATES.has(c.status)) {
+    const state = String(AVIC.labels.status[c.status] || c.status).toLowerCase();
+    form.innerHTML = '<p class="muted small">This claim is ' + UI.esc(state) + ', so no further decision can be recorded on it.</p>';
+    return;
+  }
+  /* already waiting on the claimant: asking again would change nothing */
+  const askAgain = form.querySelector('.choice[data-decision="request_docs"]');
+  if (askAgain && c.status === 'pending_docs') askAgain.classList.add('hidden');
+
   const amount = form.elements.recommended_amount;
   if (est) amount.value = est.total_estimate;
   document.getElementById('limit-note').innerHTML =

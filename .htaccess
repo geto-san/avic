@@ -1,0 +1,8 @@
+# Uploaded documents are only ever served through config/uploads.php (which checks
+# who is asking). New uploads already live outside the web root (see AVIC_UPLOAD_DIR);
+# this closes the old <project>/uploads/ folder on Apache for files uploaded before.
+# `php -S` ignores .htaccess — there, just move the old files (see README).
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^uploads/ - [F,L]
+</IfModule>

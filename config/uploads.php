@@ -10,13 +10,24 @@ declare(strict_types=1);
  * first place — the same role matrix as the rest of the API. Files that
  * would not have been accepted on upload (non image/PDF, too large) are
  * refused here too.
+ *
+ * Files live in uploadDir() (outside the web root); files uploaded before that
+ * move are still found in <project>/uploads/ — see uploadResolvePath().
  */
 
-require_once __DIR__ . '/_helpers.php';
+require_once __DIR__ . '/api/_helpers.php';
+
+/** Plain-text error (the shared API helpers default to a JSON content type). */
+function uploadFail(int $code, string $message): void
+{
+    http_response_code($code);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo $message;
+    exit;
+}
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
-    http_response_code(405);
-    exit;
+    uploadFail(405, 'Method not allowed.');
 }
 
 $user = apiUser();
@@ -32,9 +43,7 @@ try {
     $q->execute(['id' => $docId]);
     $doc = $q->fetch();
     if (!$doc) {
-        http_response_code(404);
-        echo 'Document not found.';
-        exit;
+        uploadFail(404, 'Document not found.');
     }
 
     /* role matrix for viewing */
@@ -49,49 +58,46 @@ try {
         $allowed = (bool)$wo->fetch();
     }
     if (!$allowed) {
-        http_response_code(403);
-        echo 'You do not have access to that document.';
-        exit;
+        uploadFail(403, 'You do not have access to that document.');
     }
 
     /* extension whitelist — never guess a type from the client's header */
     $ext = uploadExtFromMime((string)$doc['mime_type']);
     if ($ext === null) {
-        http_response_code(415);
-        echo 'Unsupported file type.';
-        exit;
+        uploadFail(415, 'Unsupported file type.');
     }
 
-    $path = __DIR__ . '/../../' . $doc['file_path'];
-    if (!$doc['file_path'] || !is_file($path) || !is_readable($path)) {
-        http_response_code(404);
-        echo 'File is missing on disk.';
-        exit;
+    $path = $doc['file_path'] ? uploadResolvePath((string)$doc['file_path']) : null;
+    if ($path === null) {
+        uploadFail(404, 'File is missing on disk.');
     }
 
     /* file has been swapped since upload? a serving page shouldn't change ext/mime */
     $size = filesize($path);
     if ($doc['file_size'] && $size !== (int)$doc['file_size']) {
-        http_response_code(404);
-        echo 'File integrity check failed.';
-        exit;
+        uploadFail(404, 'File integrity check failed.');
     }
 
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mime = (string)$finfo->file($path);
     if ($mime !== $doc['mime_type']) {
-        http_response_code(404);
-        echo 'File integrity check failed.';
-        exit;
+        uploadFail(404, 'File integrity check failed.');
     }
+
+    /* the stored name came from the uploader: strip it to a safe ASCII fallback for
+       filename="..." and send the real one percent-encoded in filename*= (RFC 5987),
+       so a quote or ; in it can never break out of the header */
+    $original = (string)($doc['original_name'] ?? '');
+    $ascii = trim((string)preg_replace('/[^A-Za-z0-9._-]+/', '_', $original), '_');
+    $ascii = $ascii === '' ? 'document' : $ascii;
 
     header('Content-Type: ' . $mime);
     header('Content-Length: ' . $size);
-    $disposition = 'inline';
-    header('Content-Disposition: ' . $disposition . '; filename="' . $doc['original_name'] . '"');
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: private, no-store');
+    header('Content-Disposition: inline; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode($original !== '' ? $original : $ascii));
     readfile($path);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    http_response_code(500);
-    echo 'Server error.';
+    uploadFail(500, 'Server error.');
 }

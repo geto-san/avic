@@ -9,6 +9,11 @@ declare(strict_types=1);
  * documents parks the claim back on the claimant. Everything lands in the
  * status history, the adjuster_reviews table, the audit log and the
  * claimant's notification feed.
+ *
+ * A decision can only be recorded on a claim that is still open (see
+ * claim-state.php), and the whole thing is one transaction under a row lock:
+ * approving the same claim twice — or from two tabs at once — creates exactly
+ * one payout, and the loser gets a 409.
  */
 
 require_once __DIR__ . '/_helpers.php';
@@ -33,9 +38,32 @@ if (!in_array($decision, ['approve', 'reject', 'request_docs'], true)) {
 }
 
 try {
-    $claim = apiCanSeeClaim($conn, $user, $claimId);
+    apiCanSeeClaim($conn, $user, $claimId); // 404 / 403 before we take any lock
+    $result = inTransaction($conn, static fn() => recordDecision($conn, $user, $claimId, $decision, $amount, $notes));
+    apiJson(200, ['ok' => true] + $result);
+} catch (PDOException $e) {
+    error_log($e->getMessage());
+    apiJson(500, ['message' => 'Could not record the decision right now.']);
+}
+
+/**
+ * The transactional part of claims-decision.php (runs inside inTransaction()).
+ * Re-reads the claim under a row lock so every check below sees the current
+ * status, not the one from before another request got in.
+ *
+ * @return array{status:string, claim_number:string}
+ */
+function recordDecision(PDO $conn, array $user, int $claimId, string $decision, ?float $amount, ?string $notes): array
+{
+    $claim = claimLock($conn, $claimId);
     $closure = ['approve' => 'approved', 'reject' => 'rejected', 'request_docs' => 'pending_docs'];
     $newStatus = $closure[$decision];
+
+    $current = (string)$claim['status'];
+    $refusal = ($current === 'pending_docs' && $decision === 'request_docs')
+        ? 'This claim is already waiting for documents from the claimant.'
+        : 'This claim is ' . claimStatusWords($current) . ', so a decision cannot be recorded on it.';
+    claimAssertMove($current, $newStatus, $refusal);
 
     if ($decision === 'approve') {
         $policy = $conn->prepare('SELECT * FROM policies WHERE id = :id');
@@ -43,30 +71,26 @@ try {
         $pol = $policy->fetch();
         if (!$pol) {
             /* fail closed: never approve against a policy that is not on file */
-            apiJson(422, ['message' => 'There is no policy on file for this claim, so it cannot be approved.']);
+            throw new ApiAbort('There is no policy on file for this claim, so it cannot be approved.', 422);
         }
         if ($amount === null || $amount <= 0) {
-            apiJson(422, ['message' => 'Set an amount to approve.']);
+            throw new ApiAbort('Set an amount to approve.', 422);
         }
         $inPeriod = ($claim['incident_date'] >= $pol['start_date']) && ($claim['incident_date'] <= $pol['end_date']);
         if (!$inPeriod) {
-            apiJson(422, [
-                'message' => 'The incident falls outside the policy period (' . substr($pol['start_date'], 0, 10) .
-                             ' to ' . substr($pol['end_date'], 0, 10) . '), so there is no cover.',
-            ]);
+            throw new ApiAbort('The incident falls outside the policy period (' . substr($pol['start_date'], 0, 10) .
+                               ' to ' . substr($pol['end_date'], 0, 10) . '), so there is no cover.', 422);
         }
         if (in_array($pol['coverage_type'], ['basic'], true) &&
             in_array($claim['claim_type'], ['fire', 'theft', 'natural_disaster'], true)) {
-            apiJson(422, [
-                'message' => 'This peril is not covered under the basic tier of the policy.',
-            ]);
+            throw new ApiAbort('This peril is not covered under the basic tier of the policy.', 422);
         }
         if ($amount > (float)$pol['coverage_limit']) {
-            apiJson(422, ['message' => 'The approved amount exceeds the cover limit on this policy.']);
+            throw new ApiAbort('The approved amount exceeds the cover limit on this policy.', 422);
         }
     }
 
-    $stmt = $conn->prepare(
+    $conn->prepare(
         'UPDATE claims SET status = :status,
             approved_amount = IF(:approve = 1, :amount, approved_amount),
             rejection_reason = IF(:reject = 1, :reason, rejection_reason),
@@ -74,8 +98,7 @@ try {
             resolved_at = IF(:resolved = 1, NOW(), reviewed_at),
             updated_at = NOW()
          WHERE id = :id'
-    );
-    $stmt->execute([
+    )->execute([
         'status' => $newStatus,
         'approve' => $decision === 'approve' ? 1 : 0,
         'amount' => $amount,
@@ -123,8 +146,5 @@ try {
             $claim['claim_number'] . ' needs more documents before it can be assessed.');
     }
 
-    apiJson(200, ['ok' => true, 'status' => $newStatus, 'claim_number' => $claim['claim_number']]);
-} catch (PDOException $e) {
-    error_log($e->getMessage());
-    apiJson(500, ['message' => 'Could not record the decision right now.']);
+    return ['status' => $newStatus, 'claim_number' => (string)$claim['claim_number']];
 }

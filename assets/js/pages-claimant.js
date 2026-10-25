@@ -397,6 +397,9 @@ Claimant.wizard = function (s) {
     });
   };
 
+  /* a claim waiting for documents cannot go back to a draft — the server refuses it */
+  if (UI.qs('add')) document.getElementById('save-draft').classList.add('hidden');
+
   if (!UI.qs('policy')) Claimant.restoreDraft(form, sel, stamp);
 
   document.getElementById('submit').onclick = () => {

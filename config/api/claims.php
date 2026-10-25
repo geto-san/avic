@@ -14,6 +14,11 @@ declare(strict_types=1);
  *
  * Drafts persist server-side so they survive reload and other devices;
  * submitted claims are routed to the quietest adjuster in one go.
+ *
+ * A claimant can only touch a claim that is still theirs to edit: a draft
+ * (save or submit) or one waiting for documents (submit again). Anything
+ * further along is refused with a 409 — see claim-state.php. The whole write
+ * (claim row, uploads, history, audit, notifications) is one transaction.
  */
 
 require_once __DIR__ . '/_helpers.php';
@@ -45,9 +50,8 @@ if (!in_array($mode, ['draft', 'submit'], true)) {
 $existingId = isset($in['id']) ? (int)$in['id'] : 0;
 
 try {
-    $claim = null;
     if ($existingId) {
-        $claim = apiCanSeeClaim($conn, $user, $existingId);
+        apiCanSeeClaim($conn, $user, $existingId); // 404 / 403 for someone else's claim
     }
 
     $policyId = (int)($in['policy_id'] ?? 0);
@@ -106,87 +110,113 @@ try {
         'estimated_damage'      => $estDamage,
     ];
 
-    /* ---- create or update the claim row ---- */
-    if (!$claim) {
-        $claim_number = nextClaimNumber($conn);
-        $status = $mode === 'draft' ? 'draft' : 'submitted';
-        $adjuster = $mode === 'submit' ? leastBusyAdjuster($conn) : null;
-        $stmt = $conn->prepare(
+    $result = inTransaction($conn, static fn() => persistClaim($conn, $user, $mode, $existingId, $fields, $files));
+
+    apiJson(200, ['ok' => true] + $result);
+} catch (PDOException $e) {
+    error_log($e->getMessage());
+    apiJson(500, ['message' => 'Could not save the claim right now.']);
+}
+
+/**
+ * The transactional part of claims.php. Runs inside inTransaction(): the claim
+ * row is locked and re-read, the status move is checked against the lifecycle,
+ * then everything is written together or not at all.
+ *
+ * @return array{id:int, claim_number:string, documents_saved:int}
+ */
+function persistClaim(PDO $conn, array $user, string $mode, int $existingId, array $fields, array $files): array
+{
+    $uid = (int)$user['id'];
+    $submit = $mode === 'submit';
+
+    if ($existingId) {
+        $row = claimLock($conn, $existingId);
+        if ((int)$row['user_id'] !== $uid) {
+            throw new ApiAbort('That claim belongs to another policy holder.', 403);
+        }
+        $oldStatus = (string)$row['status'];
+        $newStatus = $submit ? 'submitted' : 'draft';
+        claimAssertMove($oldStatus, $newStatus, claimEditRefusal($oldStatus, $submit));
+
+        /* a draft that was saved earlier has no adjuster yet — hand it to
+           someone now, or it sits in nobody's queue */
+        $adjuster = $row['adjuster_id'] === null ? null : (int)$row['adjuster_id'];
+        if ($submit && $adjuster === null) {
+            $adjuster = leastBusyAdjuster($conn);
+        }
+        /* pending_docs add-docs flow reopens the queue without resetting the SLA clock */
+        $stampSubmit = $submit && $oldStatus !== 'pending_docs';
+        $conn->prepare(
+            'UPDATE claims SET policy_id = :pid, claim_type = :ctype, incident_date = :idate,
+                    incident_location = :loc, incident_description = :desc,
+                    police_report_ref = :pref, estimated_damage = :est, status = :status,
+                    adjuster_id = :aid,' .
+                    ($stampSubmit ? ' submitted_at = NOW(),' : '') . '
+                    updated_at = NOW()
+             WHERE id = :id'
+        )->execute([
+            'pid' => $fields['policy_id'], 'ctype' => $fields['claim_type'], 'idate' => $fields['incident_date'],
+            'loc' => $fields['incident_location'] ?? '', 'desc' => $fields['incident_description'],
+            'pref' => $fields['police_report_ref'], 'est' => $fields['estimated_damage'],
+            'status' => $newStatus, 'aid' => $adjuster, 'id' => $existingId,
+        ]);
+        $claimId = $existingId;
+        $claimNumber = (string)$row['claim_number'];
+    } else {
+        $oldStatus = null;
+        $claimNumber = nextClaimNumber($conn);
+        $adjuster = $submit ? leastBusyAdjuster($conn) : null;
+        $conn->prepare(
             'INSERT INTO claims (claim_number, user_id, policy_id, adjuster_id, incident_date, incident_location,
                                  incident_description, claim_type, estimated_damage, police_report_ref, status,
                                  submitted_at, created_at, updated_at)
              VALUES (:cn, :uid, :pid, :aid, :idate, :loc, :desc, :ctype, :est, :pref, :status,
                      :sub, NOW(), NOW())'
-        );
-        $stmt->execute([
-            'cn' => $claim_number, 'uid' => $uid, 'pid' => $policyId, 'aid' => $adjuster,
-            'idate' => $incidentDate, 'loc' => $location, 'desc' => $description,
-            'ctype' => $claimType, 'est' => $estDamage, 'pref' => $policeRef, 'status' => $status,
-            'sub' => $mode === 'submit' ? date('Y-m-d H:i:s') : null,
+        )->execute([
+            'cn' => $claimNumber, 'uid' => $uid, 'pid' => $fields['policy_id'], 'aid' => $adjuster,
+            'idate' => $fields['incident_date'], 'loc' => $fields['incident_location'] ?? '',
+            'desc' => $fields['incident_description'], 'ctype' => $fields['claim_type'],
+            'est' => $fields['estimated_damage'], 'pref' => $fields['police_report_ref'],
+            'status' => $submit ? 'submitted' : 'draft',
+            'sub' => $submit ? date('Y-m-d H:i:s') : null,
         ]);
         $claimId = (int)$conn->lastInsertId();
-        $audit_target = $claim_number;
-        $old_status = null;
-    } else {
-        $claimId = (int)$claim['id'];
-        $claim_number = $claim['claim_number'];
-        $old_status = $claim['status'];
-
-        /* pending_docs add-docs flow reopens the queue; drafts just update */
-        $newStatus = $mode === 'draft' ? 'draft' : 'submitted';
-        $stampSubmit = $mode === 'submit' && $old_status !== 'pending_docs';
-        $stmt = $conn->prepare(
-            'UPDATE claims SET policy_id = :pid, claim_type = :ctype, incident_date = :idate,
-                    incident_location = :loc, incident_description = :desc,
-                    police_report_ref = :pref, estimated_damage = :est, status = :status,' .
-                    ($stampSubmit ? ' submitted_at = NOW(),' : '') . '
-                    updated_at = NOW()
-             WHERE id = :id'
-        );
-        $stmt->execute([
-            'pid' => $policyId, 'ctype' => $claimType, 'idate' => $incidentDate, 'loc' => $location,
-            'desc' => $description, 'pref' => $policeRef, 'est' => $estDamage,
-            'status' => $newStatus, 'id' => $claimId,
-        ]);
-        $audit_target = $claim_number;
     }
 
     /* ---- document uploads ---- */
     $savedDocs = 0;
-    if ($mode === 'submit' && $files) {
+    if ($submit && $files) {
         $savedDocs = saveUploads($conn, $claimId, $uid, filesToArrays($files));
     }
 
-    if ($mode === 'submit') {
-        $finalStatus = 'submitted';
+    if ($submit) {
         $conn->prepare('INSERT INTO claim_status_history (claim_id, changed_by, from_status, to_status, notes)
                         VALUES (:cid, :by, :from, :to, :notes)')
-             ->execute(['cid' => $claimId, 'by' => $uid, 'from' => $old_status ?: 'draft', 'to' => $finalStatus, 'notes' => 'Claim submitted by policy holder']);
-        audit($conn, $user, 'claim.submitted', 'claim', $claimId, ['status' => $old_status], ['status' => $finalStatus, 'documents' => $savedDocs]);
+             ->execute(['cid' => $claimId, 'by' => $uid, 'from' => $oldStatus ?: 'draft', 'to' => 'submitted', 'notes' => 'Claim submitted by policy holder']);
+        audit($conn, $user, 'claim.submitted', 'claim', $claimId, ['status' => $oldStatus], ['status' => 'submitted', 'documents' => $savedDocs]);
 
-        $adjuster = $conn->prepare('SELECT adjuster_id FROM claims WHERE id = :id');
-        $adjuster->execute(['id' => $claimId]);
-        $aid = $adjuster->fetch();
-        if ($aid && $aid['adjuster_id']) {
-            notify($conn, (int)$aid['adjuster_id'], $claimId, 'claim_assigned',
+        if ($adjuster) {
+            notify($conn, $adjuster, $claimId, 'claim_assigned',
                 'New claim in your queue',
-                $claim_number . ' was routed to you for review.');
+                $claimNumber . ' was routed to you for review.');
         }
         notify($conn, $uid, $claimId, 'status_changed', 'Claim submitted',
-            $claim_number . ' is in the queue. You will hear from an adjuster.');
+            $claimNumber . ' is in the queue. You will hear from an adjuster.');
     } else {
         audit($conn, $user, 'claim.draft_saved', 'claim', $claimId, null, ['status' => 'draft']);
     }
 
-    apiJson(200, [
-        'ok' => true,
-        'id' => $claimId,
-        'claim_number' => $claim_number,
-        'documents_saved' => $savedDocs,
-    ]);
-} catch (PDOException $e) {
-    error_log($e->getMessage());
-    apiJson(500, ['message' => 'Could not save the claim right now.']);
+    return ['id' => $claimId, 'claim_number' => $claimNumber, 'documents_saved' => $savedDocs];
+}
+
+/** Why a claimant's save/submit on an existing claim was refused (shown to them as-is). */
+function claimEditRefusal(string $status, bool $submit): string
+{
+    if ($status === 'pending_docs' && !$submit) {
+        return 'This claim is waiting for documents. Add them and submit it; it cannot go back to a draft.';
+    }
+    return 'This claim is ' . claimStatusWords($status) . ' and can no longer be edited.';
 }
 
 function nextClaimNumber(PDO $conn): string

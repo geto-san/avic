@@ -10,6 +10,10 @@ declare(strict_types=1);
  * Reaching "completed" also lands the underlying claim at "paid" so the case
  * leaves the pending sink for good. Every transition is written to the status
  * history, the audit log and the claimant's notification feed.
+ *
+ * One transaction under a row lock on the payout (and its claim): two clicks
+ * or two tabs cannot both advance the same step, and nothing is half-written.
+ * The claim must still be "approved" (claim-state.php) for its payout to move.
  */
 
 require_once __DIR__ . '/_helpers.php';
@@ -34,72 +38,93 @@ if (!in_array($action, ['mark_processing', 'mark_paid'], true)) {
     apiJson(422, ['message' => 'Unknown payout action.']);
 }
 
-$sel = $conn->prepare(
-    'SELECT p.*, c.claim_number FROM payouts p JOIN claims c ON c.id = p.claim_id WHERE p.id = :id LIMIT 1'
-);
-$sel->execute(['id' => $payoutId]);
-$payout = $sel->fetch();
-if (!$payout) {
-    apiJson(404, ['message' => 'That payout does not exist.']);
+try {
+    $result = inTransaction($conn, static fn() => advancePayout($conn, $user, $payoutId, $action));
+    apiJson(200, ['ok' => true] + $result);
+} catch (PDOException $e) {
+    error_log($e->getMessage());
+    apiJson(500, ['message' => 'Could not update the payout right now.']);
 }
 
-/* fail closed: only the adjuster who approved can advance the payout */
-if ((int)$payout['approved_by'] !== (int)$user['id']) {
-    apiJson(403, ['message' => 'Only the adjuster who approved this claim may advance its payout.']);
-}
-
-/* single-step forward state machine only */
-$from = $payout['status'];
-$targets = [
-    'mark_processing' => ['pending' => 'processing'],
-    'mark_paid'       => ['processing' => 'completed'],
-];
-if (!isset($targets[$action][$from])) {
-    if ($from === 'pending') {
-        $msg = 'Mark it as processing first.';
-    } elseif ($from === 'completed') {
-        $msg = 'This payout has already been completed.';
-    } else {
-        $msg = 'This payout has already been advanced to ' . $from . '.';
+/**
+ * The transactional part of payouts-update.php (runs inside inTransaction()).
+ *
+ * @return array{status:string, processed_at:string}
+ */
+function advancePayout(PDO $conn, array $user, int $payoutId, string $action): array
+{
+    $sel = $conn->prepare(
+        'SELECT p.*, c.claim_number, c.status AS claim_status
+         FROM payouts p JOIN claims c ON c.id = p.claim_id
+         WHERE p.id = :id LIMIT 1 FOR UPDATE'
+    );
+    $sel->execute(['id' => $payoutId]);
+    $payout = $sel->fetch();
+    if (!$payout) {
+        throw new ApiAbort('That payout does not exist.', 404);
     }
-    apiJson(409, ['message' => $msg]);
-}
-$to = $targets[$action][$from];
 
-$conn->prepare(
-    'UPDATE payouts SET status = :to, processed_at = NOW(), updated_at = NOW() WHERE id = :id'
-)->execute(['to' => $to, 'id' => $payoutId]);
+    /* fail closed: only the adjuster who approved can advance the payout */
+    if ((int)$payout['approved_by'] !== (int)$user['id']) {
+        throw new ApiAbort('Only the adjuster who approved this claim may advance its payout.', 403);
+    }
 
-$who = $payout['claim_number'] . ' to ' . (string)$payout['user_id'];
-$conn->prepare(
-    'INSERT INTO claim_status_history (claim_id, changed_by, from_status, to_status, notes)
-     VALUES (:cid, :by, :from, :to, :notes)'
-)->execute([
-    'cid' => (int)$payout['claim_id'],
-    'by'  => (int)$user['id'],
-    'from' => $from,
-    'to'   => $to,
-    'notes' => 'Payout ' . $payout['reference_number'] . ': ' . $from . ' -> ' . $to,
-]);
+    /* the claim must still be approved; "paid" is the only move out of it */
+    claimAssertMove((string)$payout['claim_status'], 'paid',
+        'This claim is ' . claimStatusWords((string)$payout['claim_status']) . ', so its payout cannot move forward.');
 
-audit($conn, $user, 'payout.' . $to, 'payout', $payoutId,
-      ['status' => $from], ['status' => $to, 'processed_at' => date('Y-m-d H:i:s')]);
+    /* single-step forward state machine only */
+    $from = $payout['status'];
+    $targets = [
+        'mark_processing' => ['pending' => 'processing'],
+        'mark_paid'       => ['processing' => 'completed'],
+    ];
+    if (!isset($targets[$action][$from])) {
+        if ($from === 'pending') {
+            $msg = 'Mark it as processing first.';
+        } elseif ($from === 'completed') {
+            $msg = 'This payout has already been completed.';
+        } else {
+            $msg = 'This payout has already been advanced to ' . $from . '.';
+        }
+        throw new ApiAbort($msg, 409);
+    }
+    $to = $targets[$action][$from];
 
-$titles = [
-    'processing' => 'Payout in progress',
-    'completed'  => 'Payout completed',
-];
-$messages = [
-    'processing' => 'AVIC has started processing the ' . number_format((float)$payout['amount']) . ' UGX payout for ' . $payout['claim_number'] . '. It usually lands within 2 working days.',
-    'completed'  => 'The ' . number_format((float)$payout['amount']) . ' UGX payout for ' . $payout['claim_number'] . ' has been completed. Check ' . $payout['payment_method'] . ' for reference ' . $payout['reference_number'] . '.',
-];
-notify($conn, (int)$payout['user_id'], (int)$payout['claim_id'], 'payout',
-       $titles[$to], $messages[$to]);
+    /* payouts has no updated_at column (the old query named one and failed on a
+       database built from schema.php); processed_at is the timestamp we keep */
+    $conn->prepare('UPDATE payouts SET status = :to, processed_at = NOW() WHERE id = :id')
+         ->execute(['to' => $to, 'id' => $payoutId]);
 
-if ($to === 'completed') {
     $conn->prepare(
-        'UPDATE claims SET status = "paid", updated_at = NOW() WHERE id = :id'
-    )->execute(['id' => (int)$payout['claim_id']]);
-}
+        'INSERT INTO claim_status_history (claim_id, changed_by, from_status, to_status, notes)
+         VALUES (:cid, :by, :from, :to, :notes)'
+    )->execute([
+        'cid' => (int)$payout['claim_id'],
+        'by'  => (int)$user['id'],
+        'from' => $from,
+        'to'   => $to,
+        'notes' => 'Payout ' . $payout['reference_number'] . ': ' . $from . ' -> ' . $to,
+    ]);
 
-apiJson(200, ['ok' => true, 'status' => $to, 'processed_at' => date('Y-m-d H:i:s')]);
+    audit($conn, $user, 'payout.' . $to, 'payout', $payoutId,
+          ['status' => $from], ['status' => $to, 'processed_at' => date('Y-m-d H:i:s')]);
+
+    $titles = [
+        'processing' => 'Payout in progress',
+        'completed'  => 'Payout completed',
+    ];
+    $messages = [
+        'processing' => 'AVIC has started processing the ' . number_format((float)$payout['amount']) . ' UGX payout for ' . $payout['claim_number'] . '. It usually lands within 2 working days.',
+        'completed'  => 'The ' . number_format((float)$payout['amount']) . ' UGX payout for ' . $payout['claim_number'] . ' has been completed. Check ' . $payout['payment_method'] . ' for reference ' . $payout['reference_number'] . '.',
+    ];
+    notify($conn, (int)$payout['user_id'], (int)$payout['claim_id'], 'payout',
+           $titles[$to], $messages[$to]);
+
+    if ($to === 'completed') {
+        $conn->prepare('UPDATE claims SET status = "paid", updated_at = NOW() WHERE id = :id')
+             ->execute(['id' => (int)$payout['claim_id']]);
+    }
+
+    return ['status' => $to, 'processed_at' => date('Y-m-d H:i:s')];
+}

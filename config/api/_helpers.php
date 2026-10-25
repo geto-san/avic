@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../db/db_connection.php';
 require_once __DIR__ . '/../session.php';
+require_once __DIR__ . '/claim-state.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -149,7 +150,47 @@ function apiCanSeeClaim(PDO $conn, array $user, int $claimId): ?array
     return $claim;
 }
 
-const UPLOAD_DIR = __DIR__ . '/../../uploads';
+/**
+ * Where uploaded files are stored. Deliberately OUTSIDE the web root so a file
+ * can only ever be fetched through config/uploads.php (which checks the role).
+ * Set AVIC_UPLOAD_DIR to an absolute path on any real deploy; the default is a
+ * sibling of the project folder, which is outside the docroot when you serve
+ * the project folder itself (e.g. `php -S` from the repo root).
+ */
+function uploadDir(): string
+{
+    $env = getenv('AVIC_UPLOAD_DIR');
+    if (is_string($env) && $env !== '') {
+        return rtrim($env, '/\\');
+    }
+    return dirname(__DIR__, 3) . '/avic-uploads';
+}
+
+/** Before the move, files lived in <project>/uploads/. Still readable, never written. */
+function legacyUploadDir(): string
+{
+    return dirname(__DIR__, 2) . '/uploads';
+}
+
+/**
+ * Turn a claim_documents.file_path into a real file on disk, or null.
+ * Only the file NAME is trusted (basename), so neither a bare name nor an old
+ * "uploads/<name>" value can point outside the upload folders.
+ */
+function uploadResolvePath(string $filePath): ?string
+{
+    $name = basename(str_replace('\\', '/', $filePath));
+    if ($name === '' || $name === '.' || $name === '..') {
+        return null;
+    }
+    foreach ([uploadDir(), legacyUploadDir()] as $dir) {
+        $candidate = $dir . '/' . $name;
+        if (is_file($candidate) && is_readable($candidate)) {
+            return $candidate;
+        }
+    }
+    return null;
+}
 
 /** Whitelist of MIME -> extension used for both validation and mime sniffing. */
 function uploadExtFromMime(string $mime): ?string
@@ -163,8 +204,9 @@ function uploadExtFromMime(string $mime): ?string
 
 /**
  * Persist an array of uploaded files (field name "files") onto a claim.
- * Files are stored under uploads/ with random names; the DB row records the
- * original name so the UI can keep showing it. Returns the count saved.
+ * Files are stored in uploadDir() (outside the web root) under random names;
+ * the DB row records the original name so the UI can keep showing it, and
+ * file_path holds just the stored name. Returns the count saved.
  */
 function saveUploads(PDO $conn, int $claimId, int $userId, array $files): int
 {
@@ -188,10 +230,12 @@ function saveUploads(PDO $conn, int $claimId, int $userId, array $files): int
             continue; // not a permitted file type — skipped, not fatal
         }
         $storedName = bin2hex(random_bytes(10)) . '.' . $ext;
-        if (!is_dir(UPLOAD_DIR)) {
-            mkdir(UPLOAD_DIR, 0775, true);
+        $dir = uploadDir();
+        if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
+            error_log('AVIC: cannot create upload directory ' . $dir);
+            throw new ApiAbort('Could not store the uploaded files right now.', 500);
         }
-        $target = UPLOAD_DIR . '/' . $storedName;
+        $target = $dir . '/' . $storedName;
         if (!move_uploaded_file($file['tmp_name'], $target)) {
             continue;
         }
@@ -205,7 +249,7 @@ function saveUploads(PDO $conn, int $claimId, int $userId, array $files): int
             'dt'    => $docType,
             'oname' => $file['name'],
             'sname' => $storedName,
-            'fpath' => 'uploads/' . $storedName,
+            'fpath' => $storedName,
             'fsize' => $size,
             'mime'  => $mime,
         ]);
