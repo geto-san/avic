@@ -14,6 +14,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../db/db_connection.php';
 require_once __DIR__ . '/../session.php';
 require_once __DIR__ . '/claim-state.php';
+require_once __DIR__ . '/upload-files.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -148,58 +149,6 @@ function apiCanSeeClaim(PDO $conn, array $user, int $claimId): ?array
         }
     }
     return $claim;
-}
-
-/**
- * Where uploaded files are stored. Deliberately OUTSIDE the web root so a file
- * can only ever be fetched through config/uploads.php (which checks the role).
- * Set AVIC_UPLOAD_DIR to an absolute path on any real deploy; the default is a
- * sibling of the project folder, which is outside the docroot when you serve
- * the project folder itself (e.g. `php -S` from the repo root).
- */
-function uploadDir(): string
-{
-    $env = getenv('AVIC_UPLOAD_DIR');
-    if (is_string($env) && $env !== '') {
-        return rtrim($env, '/\\');
-    }
-    return dirname(__DIR__, 3) . '/avic-uploads';
-}
-
-/** Before the move, files lived in <project>/uploads/. Still readable, never written. */
-function legacyUploadDir(): string
-{
-    return dirname(__DIR__, 2) . '/uploads';
-}
-
-/**
- * Turn a claim_documents.file_path into a real file on disk, or null.
- * Only the file NAME is trusted (basename), so neither a bare name nor an old
- * "uploads/<name>" value can point outside the upload folders.
- */
-function uploadResolvePath(string $filePath): ?string
-{
-    $name = basename(str_replace('\\', '/', $filePath));
-    if ($name === '' || $name === '.' || $name === '..') {
-        return null;
-    }
-    foreach ([uploadDir(), legacyUploadDir()] as $dir) {
-        $candidate = $dir . '/' . $name;
-        if (is_file($candidate) && is_readable($candidate)) {
-            return $candidate;
-        }
-    }
-    return null;
-}
-
-/** Whitelist of MIME -> extension used for both validation and mime sniffing. */
-function uploadExtFromMime(string $mime): ?string
-{
-    $map = [
-        'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
-        'application/pdf' => 'pdf',
-    ];
-    return $map[strtolower($mime)] ?? null;
 }
 
 /**

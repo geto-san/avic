@@ -23,6 +23,15 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/_helpers.php';
 
+const CLAIM_TYPES = ['collision', 'theft', 'vandalism', 'fire', 'natural_disaster', 'other'];
+
+/** True for a real calendar date written exactly as YYYY-MM-DD. */
+function isIsoDate(string $value): bool
+{
+    $date = DateTime::createFromFormat('!Y-m-d', $value);
+    return $date !== false && $date->format('Y-m-d') === $value;
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     apiJson(405, ['message' => 'Method not allowed']);
 }
@@ -70,10 +79,10 @@ try {
             $first->execute(['uid' => $uid]);
             $policyId = (int)$first->fetchColumn();
         }
-        if ($claimType === '' || !in_array($claimType, ['collision','theft','vandalism','fire','natural_disaster','other'], true)) {
+        if (!in_array($claimType, CLAIM_TYPES, true)) {
             $claimType = 'other';
         }
-        if ($incidentDate === '') {
+        if (!isIsoDate($incidentDate)) {
             $incidentDate = date('Y-m-d');
         }
     }
@@ -92,6 +101,16 @@ try {
             if ($f['v'] === '' || $f['v'] === 0) {
                 apiJson(422, ['message' => 'Fill in every required field.']);
             }
+        }
+        if (!in_array($claimType, CLAIM_TYPES, true)) {
+            apiJson(422, ['message' => 'Choose a valid claim type.']);
+        }
+        if (!isIsoDate($incidentDate)) {
+            apiJson(422, ['message' => 'Enter the incident date as a real date (YYYY-MM-DD).']);
+        }
+        /* a day of slack so a claimant whose "today" is ahead of the server's is not refused */
+        if ($incidentDate > date('Y-m-d', strtotime('+1 day'))) {
+            apiJson(422, ['message' => 'The incident date cannot be in the future.']);
         }
         $policy = $conn->prepare('SELECT * FROM policies WHERE id = :id AND user_id = :uid AND status = "active" LIMIT 1');
         $policy->execute(['id' => $policyId, 'uid' => $uid]);
