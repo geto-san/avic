@@ -46,7 +46,8 @@ persist to MySQL (`avic_portal`). Sign in at `config/auth/login.php` with any de
 account (password `Demo2026!`) to exercise the whole flow for your role:
 
 - Claimants submit claims with declared incidents and document uploads (real files are
-  saved to `uploads/` and streamed back through `config/uploads.php`).
+  saved **outside the web root** — see `AVIC_UPLOAD_DIR` below — and streamed back through
+  `config/uploads.php`).
 - Adjusters see their assignment queue, record approve/reject/request-docs decisions,
   approve or send back garage estimates, and assign garages to open work orders.
 - Garages submit (and revise) repair quotes; decisions, notifications and the audit log
@@ -54,7 +55,26 @@ account (password `Demo2026!`) to exercise the whole flow for your role:
 
 Documents seeded via `config/db/seed-demo.php` are metadata-only (`file_path = ""`);
 they render a placeholder in the viewer until a real upload exists. Uploads are
-git-ignored runtime files, never committed.
+runtime files, never committed.
+
+## Claim lifecycle
+
+Every endpoint that moves a claim goes through one rule table
+(`config/api/claim-state.php`), inside a transaction, after taking a row lock on the
+claim — so a claim can only follow the lifecycle below, and two requests racing for it
+cannot both win (the loser gets a `409`).
+
+| From | Can move to | Who triggers it |
+|---|---|---|
+| `draft` | `draft` (save), `submitted` | claimant |
+| `submitted` | `approved`, `rejected`, `pending_docs` (and `under_review`, not set by anything yet) | adjuster |
+| `pending_docs` | `submitted` | claimant (adds documents) |
+| `pending_docs` | `approved`, `rejected` | adjuster |
+| `approved` | `paid` | adjuster, when the payout reaches `completed` |
+| `paid`, `rejected` | `closed` (not set by anything yet) | — |
+
+Anything else is refused: an approved or paid claim can no longer be re-submitted or
+saved back to a draft, and a decision can't be recorded twice on the same claim.
 
 ## Run it
 
@@ -118,6 +138,28 @@ Requirements: PHP 8.x with PDO MySQL, MySQL/MariaDB.
 5. Open http://127.0.0.1:8080 — you'll land on **Sign in**, where you can register a
    claimant or garage account and then sign in.
 
+6. **Where uploads go.** Files are stored outside the web root, in `AVIC_UPLOAD_DIR`
+   (default: an `avic-uploads/` folder next to the project folder). On any real deploy
+   set it explicitly to an absolute path that the web server's user can write but that
+   is not under the docroot, e.g. `AVIC_UPLOAD_DIR=/var/lib/avic/uploads`.
+
+   If you have files from before this change in `<project>/uploads/`, they are still
+   served through `config/uploads.php`, but Apache/`php -S` can also hand them out
+   directly by URL. Move them out, and the proxy will find them in the new place:
+
+   ```bash
+   mkdir -p ../avic-uploads && mv uploads/* ../avic-uploads/ && rmdir uploads
+   ```
+
+   (`.htaccess` blocks `/uploads/` on Apache; `php -S` ignores it.)
+
+## Tests
+
+`tests/phase0-smoke.sh` is an interim end-to-end smoke test (curl + the DB client) for
+the claim lifecycle, decision/payout guards and the upload location. The header of the
+script says how to run it against a freshly seeded database. It is replaced by a real
+PHPUnit suite in Phase 1.
+
 ## Project layout
 
 ```
@@ -127,6 +169,7 @@ config/
   db/seed-demo.php         demo accounts + sample data (upsert, re-runnable)
   api/                     PHP+PDO JSON endpoints (auth, claims, decisions, estimates,
                            documents, notifications, payouts, audit)
+  api/claim-state.php      claim lifecycle rules + transaction helper (see Claim lifecycle)
   uploads.php              streaming upload proxy (role-gated, extension whitelisted)
   session.php              secure cookie/session bootstrap
   auth/register.php        sign-up endpoint
@@ -144,6 +187,8 @@ pages/
   auth/                    sign-in, registration, password screens
   claimant/ adjuster/ garage/   the three desks
   errors/                  403 / 404
+tests/
+  phase0-smoke.sh          interim smoke test (see Tests)
 docs/
   hardcoded-dependencies.md  what the pre-backend prototype faked (historical)
   porting-to-php.md          how the prototype's concepts map onto the live PHP endpoints
