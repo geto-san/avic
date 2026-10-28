@@ -1,41 +1,19 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Apply database migrations.
- *
- *   php bin/migrate.php            apply whatever is pending
- *   php bin/migrate.php --status   list applied / pending, change nothing
- *
- * Connection settings come from the environment (see .env.example).
- */
+require dirname(__DIR__) . '/src/bootstrap.php';
 
-if (PHP_SAPI !== 'cli') {
-    http_response_code(404);
-    exit;
-}
+use Avic\Core\Migrator;
 
-require_once __DIR__ . '/../config/db/db_connection.php';
-require_once __DIR__ . '/../config/db/migrator.php';
-
-try {
-    if (in_array('--status', $argv, true)) {
-        foreach (migrationStatus($conn) as $version => $appliedAt) {
-            printf("  %-8s %s\n", $appliedAt === null ? 'pending' : 'applied', $version);
-        }
-        exit(0);
+if (in_array('--status', $argv, true)) {
+    $s = Migrator::status();
+    foreach ($s['applied'] as $f) {
+        echo "applied  $f\n";
     }
-
-    $applied = migrate($conn);
-    if ($applied === []) {
-        echo "Database is up to date.\n";
-    } else {
-        foreach ($applied as $version) {
-            echo "  applied $version\n";
-        }
-        echo count($applied) . " migration(s) applied.\n";
+    foreach ($s['pending'] as $f) {
+        echo "pending  $f\n";
     }
-} catch (Throwable $e) {
-    fwrite(STDERR, 'Migration failed: ' . $e->getMessage() . "\n");
-    exit(1);
+    exit(0);
 }
+$done = Migrator::run();
+echo $done ? 'Applied: ' . implode(', ', $done) . "\n" : "Nothing to apply.\n";

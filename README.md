@@ -1,252 +1,110 @@
-# AVIC — Auto Vehicle Insurance Claims
+# AVIC — Claims Management System
 
-A claims-handling portal prototype for an insurance company in Uganda. Claimants file
-claims against their policies, adjusters review and settle them, and garages quote for
-repairs — three desks, one workflow.
+A simplified claims platform for motor insurance in Uganda, modelled on **Guidewire ClaimCenter**.
+Policyholders report a loss (First Notice of Loss); adjusters investigate, set reserves, issue
+payments and close the claim — with every step audited.
 
-**Front end:** static HTML/CSS/JS multi-role shell. All data is fetched from the PHP
-API through `assets/js/api.js` and cached in the `AVIC.*` layer; nothing is held in a
-hardcoded file anymore.
+Built for a university course project: plain PHP 8.1+, MySQL/MariaDB, server-rendered HTML/CSS and
+almost no JavaScript. No framework, no Composer dependencies.
 
-**Back end:** small PHP API on MySQL that backs authentication, claims, policies,
-documents, garage estimates, work orders, notifications, payouts, the audit log and
-settings (see `docs/porting-to-php.md` for the mapping).
+## What it does
 
-## Roles
+| ClaimCenter concept | In AVIC |
+|---|---|
+| FNOL with policy search & retrieval | 3-step wizard: find policy → loss details & exposures → review & submit |
+| Coverage verification / validation rules | Automated at intake; questions are **flagged**, not blocking (see below) |
+| Assignment rules | Ordered rules in `config/rules.php`: specialist in region → anyone in region → anyone; least-loaded wins; otherwise the unassigned queue |
+| Activities & work plan | Rules create tasks per event (claim opened, exposure added …); completing one can move the claim forward |
+| Claim lifecycle | `open → investigating → settled → closed` (+ reopen), one transition table, row-locked |
+| Exposures | One per loss item (own vehicle, third-party vehicle/property/injury); money is tracked per exposure |
+| Financials | Append-only **ledger** of reserves, payments, recoveries; can't pay more than is reserved |
+| Audit history | Every state change, assignment and money movement is logged with who and when |
 
-| Role      | Desk                  | Signs up?                |
-|-----------|-----------------------|--------------------------|
-| Claimant  | File and track claims | Self-service registration |
-| Adjuster  | Review queue, settle  | Created internally       |
-| Garage    | Quote and repair      | Self-service registration |
+### Roles (just two)
 
-There is no administrator role. Claimants and garages register themselves and are
-active immediately; adjuster accounts are created by running the seed script.
+| Role | Can do |
+|---|---|
+| **Claimant** (policyholder) | Register, link a policy, report a loss, upload documents, follow status and payments on their own claims |
+| **Adjuster** (staff) | See all claims and queues, take/reassign claims, work activities, add exposures, set reserves, issue payments, record recoveries, settle, close, reopen |
 
-## What works today
-
-- **Register** (`config/auth/register.php`) — claimant or garage account, validated,
-  bcrypt-hashed, status `active` right away. Garage registration captures workshop
-  address and trading licence.
-- **Login** (`config/auth/login.php`) — password verified against the DB, generic
-  errors (never reveals whether an email exists), account-status gate, and a failed-attempt
-  lockout (5 failures per IP+email in 15 minutes -> 429, tracked in the `login_attempts`
-  table). Success opens a secure PHP session (HTTP-only, SameSite=Lax, Secure over HTTPS)
-  and updates `last_login`.
-- **Logout** (`config/auth/logout.php`) — destroys the server session.
-- **Session bridge** (`assets/js/session.js`) — the server user is mirrored into the
-  front end's `sessionStorage`, so the existing role guards and role-specific nav keep
-  working; `AVIC.signOut()` clears both.
-
-## Live backend
-
-Claims, policies, documents, garage estimates, work orders, notifications, payouts, the
-audit log, and settings are served by real PHP+PDO endpoints under `config/api/` and
-persist to MySQL (`avic_portal`). Sign in at `config/auth/login.php` with any demo
-account (password `Demo2026!`) to exercise the whole flow for your role:
-
-- Claimants submit claims with declared incidents and document uploads (real files are
-  saved **outside the web root** — see `AVIC_UPLOAD_DIR` below — and streamed back through
-  `config/uploads.php`).
-- Adjusters see their assignment queue, record approve/reject/request-docs decisions,
-  approve or send back garage estimates, and assign garages to open work orders.
-- Garages submit (and revise) repair quotes; decisions, notifications and the audit log
-  are written to the database.
-
-Documents seeded via `config/db/seed-demo.php` are metadata-only (`file_path = ""`);
-they render a placeholder in the viewer until a real upload exists. Uploads are
-runtime files, never committed.
-
-## Claim lifecycle
-
-Every endpoint that moves a claim goes through one rule table
-(`config/api/claim-state.php`), inside a transaction, after taking a row lock on the
-claim — so a claim can only follow the lifecycle below, and two requests racing for it
-cannot both win (the loser gets a `409`).
-
-| From | Can move to | Who triggers it |
-|---|---|---|
-| `draft` | `draft` (save), `submitted` | claimant |
-| `submitted` | `approved`, `rejected`, `pending_docs` (and `under_review`, not set by anything yet) | adjuster |
-| `pending_docs` | `submitted` | claimant (adds documents) |
-| `pending_docs` | `approved`, `rejected` | adjuster |
-| `approved` | `paid` | adjuster, when the payout reaches `completed` |
-| `paid`, `rejected` | `closed` (not set by anything yet) | — |
-
-Anything else is refused: an approved or paid claim can no longer be re-submitted or
-saved back to a draft, and a decision can't be recorded twice on the same claim.
+Adjusters cannot self-register: `php bin/create-adjuster.php`. The previous *garage* role was removed —
+a repair shop is a vendor, not a user of the claims desk; repair quotes are now just exposures,
+documents and reserves handled by the adjuster.
 
 ## Run it
 
-Requirements: PHP 8.1+ with `pdo_mysql`, `mbstring` and `fileinfo`; MariaDB 11.3+ (or
-MySQL / an older MariaDB — see the collation note below).
-
-1. Create the database and user. The connection is configured through `AVIC_DB_*`
-   environment variables (see `.env.example`); with none set you get these dev defaults:
-
-   ```sql
-   CREATE DATABASE IF NOT EXISTS avic_portal;
-   CREATE USER IF NOT EXISTS 'avic'@'localhost' IDENTIFIED BY '12345678';
-   GRANT ALL PRIVILEGES ON avic_portal.* TO 'avic'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
-
-2. Create the schema with the migration runner (idempotent — only applies what is pending):
-
-   ```bash
-   php bin/migrate.php            # apply pending migrations
-   php bin/migrate.php --status   # list applied / pending
-   ```
-
-   The tables live in `database/migrations/*.sql` (applied once each, in filename order,
-   and recorded in `schema_migrations`). `php config/db/schema.php` still works — it just
-   runs the same runner. To change the schema, add `0002_something.sql`; never edit one
-   that has been applied. An existing database built by the old `schema.php` is adopted
-   automatically (the baseline only creates what is missing).
-
-   **MySQL / MariaDB older than 11.3:** the baseline uses MariaDB's `utf8mb4_uca1400_ai_ci`
-   collation. On other servers set `AVIC_DB_COLLATION=utf8mb4_unicode_ci` (or any collation
-   your server has) before migrating.
-
-3. Seed the demo accounts and sample claims (idempotent, upsert-style):
-
-   ```bash
-   php config/db/seed-demo.php
-   ```
-
-   Sign in with `geto`/`Demo2026!` (claimant), `brian.okot@avic.ug`/`Demo2026!`
-   (adjuster) or `desk@kigongomotors.ug`/`Demo2026!` (garage).
-
-4. Serve the folder with PHP's built-in server (executes `.php`; a static server like
-   `python3 -m http.server` will return `501` for POST and serve PHP as text):
-
-   ```bash
-   php -S 127.0.0.1:8080
-   ```
-
-   The session cookie is `Secure` by default, so browsers only keep it over HTTPS
-   (Chrome and Firefox also allow it on `localhost`). If sign-in appears to work but you
-   are bounced straight back to the login page, your browser is dropping the cookie over
-   plain `http://`. For local development only, start the server with the opt-out set:
-
-   ```bash
-   # macOS / Linux / Git Bash
-   AVIC_ALLOW_INSECURE_COOKIES=1 php -S 127.0.0.1:8080
-   # Windows PowerShell
-   $env:AVIC_ALLOW_INSECURE_COOKIES = "1"; php -S 127.0.0.1:8080
-   ```
-
-5. Add an adjuster to sign in with (interactive, or pass the password as an argument):
-
-   ```bash
-   php config/auth/seed-adjuster.php 'YourPassword123!'
-   ```
-
-5. Open http://127.0.0.1:8080 — you'll land on **Sign in**, where you can register a
-   claimant or garage account and then sign in.
-
-6. **Where uploads go.** Files are stored outside the web root, in `AVIC_UPLOAD_DIR`
-   (default: an `avic-uploads/` folder next to the project folder). On any real deploy
-   set it explicitly to an absolute path that the web server's user can write but that
-   is not under the docroot, e.g. `AVIC_UPLOAD_DIR=/var/lib/avic/uploads`.
-
-   If you have files from before this change in `<project>/uploads/`, they are still
-   served through `config/uploads.php`, but Apache/`php -S` can also hand them out
-   directly by URL. Move them out, and the proxy will find them in the new place:
-
-   ```bash
-   mkdir -p ../avic-uploads && mv uploads/* ../avic-uploads/ && rmdir uploads
-   ```
-
-   (`.htaccess` blocks `/uploads/` on Apache; `php -S` ignores it.)
-
-## Development
+Requirements: PHP 8.1+ (`pdo_mysql`, `mbstring`, `fileinfo`), MariaDB 10.5+ or MySQL 8.
 
 ```bash
-composer install               # PHPUnit (dev only — the app itself has no dependencies)
-composer lint                  # php -l every PHP file
-composer test:unit             # fast, no database
-composer test:feature          # drives the real app over HTTP against a test database
-composer test                  # both
+# 1. database
+mariadb -e "CREATE DATABASE avic_portal;
+            CREATE USER 'avic'@'localhost' IDENTIFIED BY 'choose-a-password';
+            GRANT ALL ON avic_portal.* TO 'avic'@'localhost';"
+
+# 2. configuration (a .env file in the project root is read automatically)
+cp .env.example .env        # then edit AVIC_DB_PASS
+
+# 3. schema + demo data
+php bin/migrate.php
+php bin/seed.php            # demo accounts, policies and three claims in different stages
+
+# 4. serve (document root is public/)
+php -S 127.0.0.1:8080 -t public public/index.php
 ```
 
-The feature tests need their own database, which they **wipe and re-seed before every
-test** — so the name must end in `_test` (the suite refuses to run otherwise):
+Open <http://127.0.0.1:8080>. Demo password for every seeded account is `Demo2026!`
+(override with `AVIC_DEMO_SECRET`):
 
-```sql
-CREATE DATABASE IF NOT EXISTS avic_test;
-GRANT ALL PRIVILEGES ON avic_test.* TO 'avic'@'localhost';
+| Who | Email | Notes |
+|---|---|---|
+| Claimant | `grace.nakato@example.ug` | has two policies and three claims |
+| Claimant | `moses.ssebunya@example.ug` | no policy yet — link `POL-DEMO-0003` with plate `UCC 789Z` |
+| Adjuster | `brian.okot@avic.ug` | central, collision specialist (also `sarah.kyomuhendo@`, `david.mugisha@`, `peter.opio@avic.ug`) |
+
+A good walkthrough: sign in as Moses → link the policy → report a loss in the central region →
+sign in as Brian → open the new claim → complete *Verify policy coverage* (claim moves to
+*Investigating*) → set a reserve → issue a payment larger than the reserve (refused) → settle → close as paid.
+
+## Tests
+
+```bash
+mariadb -e "CREATE DATABASE avic_test; GRANT ALL ON avic_test.* TO 'avic'@'localhost';"
+export AVIC_TEST_DB_PASS=choose-a-password      # + AVIC_TEST_DB_HOST/PORT/USER/NAME if needed
+php bin/test.php            # all suites; php bin/test.php ledger  runs matching tests
+php bin/lint.php            # syntax check every PHP file
 ```
 
-Point the tests elsewhere with `AVIC_TEST_DB_HOST` / `_PORT` / `_NAME` / `_USER` / `_PASS`
-(and `AVIC_DB_COLLATION` on a server without `uca1400`). They start a throwaway PHP server on
-a free port with its own upload folder and stop it when PHPUnit exits. Run them on Linux or
-macOS; the concurrency tests need `setsid` (they skip themselves without it).
-
-CI (`.github/workflows/ci.yml`) lints, applies the migrations to an empty MariaDB 11.4,
-and runs both suites on PHP 8.1 – 8.4. Run `composer update` once and commit the resulting
-`composer.lock` so CI and your machine use the same PHPUnit.
-
-### Configuration
-
-All settings are environment variables — see `.env.example` for the full list
-(`AVIC_DB_*`, `AVIC_UPLOAD_DIR`, `AVIC_DB_COLLATION`, `AVIC_ENV`). Setting
-`AVIC_ENV=production` makes the app refuse to start on the built-in dev database password
-and makes `seed-demo.php` refuse to run.
+The test database is **wiped before every test** and the runner refuses any database whose name
+does not end in `_test`. The suites cover the pure domain rules, the services against a real
+database (lifecycle guards, assignment, ledger arithmetic, authorization), and the HTTP layer through
+a throwaway PHP server (login lockout, CSRF, access control, the FNOL wizard, uploads).
+CI (`.github/workflows/ci.yml`) runs everything on PHP 8.1–8.4 against MariaDB.
 
 ## Project layout
 
 ```
-config/
-  db/db_connection.php     PDO connection, configured from AVIC_DB_* environment variables
-  db/migrator.php          SQL-file migration runner (used by bin/migrate.php and schema.php)
-  db/schema.php            thin wrapper that runs the migrations (kept for the old command)
-  db/seed-demo.php         demo accounts + sample data (upsert, re-runnable)
-  api/                     PHP+PDO JSON endpoints (auth, claims, decisions, estimates,
-                           documents, notifications, payouts, audit)
-  api/claim-state.php      claim lifecycle rules + transaction helper (see Claim lifecycle)
-  api/upload-files.php     where uploads live on disk (AVIC_UPLOAD_DIR) + safe path lookup
-  uploads.php              streaming upload proxy (role-gated, extension whitelisted)
-  session.php              secure cookie/session bootstrap
-  auth/register.php        sign-up endpoint
-  auth/login.php           sign-in endpoint + lockout
-  auth/logout.php          destroy session
-assets/
-  css/avic.css             full stylesheet
-  js/api.js                API client (`request` / `post` / `postForm` + upload)
-  js/mock-data.js          AVIC.* layer: API responses cached in sessionStorage + role guard
-  js/session.js            sessionStorage bridge + role guard + nav
-  js/layout.js             rail/topbar shell built from the session role
-  js/pages-*.js            per-desk renderers
-  js/auth-*.js             register/login page wiring
-pages/
-  auth/                    sign-in, registration, password screens
-  claimant/ adjuster/ garage/   the three desks
-  errors/                  403 / 404
-bin/
-  migrate.php              apply database migrations (--status to list)
-  lint.php                 php -l every PHP file
-database/
-  migrations/              numbered *.sql schema migrations
-tests/
-  Unit/                    pure-function tests, no database
-  Feature/                 HTTP tests against the real app + a test database
-  Support/                 test server, HTTP client, test-database helpers
-.github/workflows/ci.yml   lint + tests on every push
-.env.example               every environment variable the app reads
-composer.json  phpunit.xml.dist
-docs/
-  hardcoded-dependencies.md  what the pre-backend prototype faked (historical)
-  porting-to-php.md          how the prototype's concepts map onto the live PHP endpoints
+public/                 web root: index.php (router), assets/css, assets/js
+src/Core/               Db, Request, Router, Auth, Csrf, Session, View, Migrator …
+src/Domain/             pure rules: Catalog, ClaimLifecycle, CoverageCheck, Rules, Assignment
+src/Services/           ClaimService, ActivityService, FinancialService, DocumentService, AuditLog, PolicyGateway
+src/Controllers/        thin HTTP handlers: parse input → call a service → render / redirect
+templates/              server-rendered pages (PHP templates)
+config/rules.php        assignment rules and activity templates, as data
+database/migrations/    numbered *.sql files applied by bin/migrate.php
+bin/                    migrate, seed, create-adjuster, test, lint
+tests/                  domain, service and HTTP tests (no framework needed)
+docs/design.md          architecture, data model, state machine, ledger design
 ```
 
 ## Security notes
 
-- The front-end `sessionStorage` session is forgeable and is only a UI convenience; the
-  PHP session on the server is the real gate. Every future write endpoint must re-check
-  `$_SESSION['user']`.
-- The JSON-only API is reasonably CSRF-hard (browsers cannot send cross-origin
-  `application/json` without a preflight), but add a CSRF token when you start receiving
-  real form submissions.
-- Swap the dev DB credentials in `config/db/db_connection.php` for environment
-  variables on any shared deploy.
+* Passwords hashed with `password_hash`; sign-in failures are generic, throttled per IP+email (5 in 15 min), and the session id is regenerated on login.
+* Every POST requires a CSRF token. Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` over HTTPS.
+* A strict Content-Security-Policy (no inline scripts or styles), `X-Frame-Options: DENY`, `nosniff`.
+* All SQL uses prepared statements; all output is escaped.
+* Claimants only ever reach claims on their own policies — anything else is a 404, not a 403, so ids can't be probed.
+* Uploads: JPEG/PNG/PDF only (checked by content, not file name), 5 MB, random stored names, kept **outside** `public/`
+  (`storage/uploads` or `AVIC_UPLOAD_DIR`) and served only through an authorised route.
+* `AVIC_ENV=production` refuses an empty DB password and refuses to seed demo data.
+
+See [`docs/design.md`](docs/design.md) for how it fits together and what was deliberately left out.

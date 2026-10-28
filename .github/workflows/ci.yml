@@ -12,42 +12,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          tools: composer:v2
-
-      - name: composer.json is valid
-        run: composer validate --strict
-
-      - name: PHP syntax
-        run: php bin/lint.php
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: JavaScript syntax
-        run: find assets -name '*.js' -print0 | xargs -0 -n1 node --check
-
   test:
-    name: Tests (PHP ${{ matrix.php }})
+    name: PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         php: ['8.1', '8.2', '8.3', '8.4']
 
-    # The baseline migration uses MariaDB's utf8mb4_uca1400_ai_ci (11.3+), so test on 11.4.
     services:
       mariadb:
-        image: mariadb:11.4
+        image: mariadb:10.11
         env:
           MARIADB_ROOT_PASSWORD: root-only-for-ci
           MARIADB_DATABASE: avic_test
@@ -74,19 +49,22 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: pdo_mysql, mbstring, fileinfo, curl, dom, xml
-          tools: composer:v2
+          extensions: pdo_mysql, mbstring, fileinfo, curl
           coverage: none
 
-      # No composer.lock is committed yet, so this resolves fresh each run.
-      # Run `composer update` locally once and commit the lock file to pin versions.
-      - name: Install dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist
+      - name: PHP syntax
+        run: php bin/lint.php
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: JavaScript syntax
+        run: find public/assets -name '*.js' -print0 | xargs -0 -n1 node --check
 
       - name: Migrations apply to an empty database, and again as a no-op
         env:
           AVIC_DB_HOST: 127.0.0.1
-          AVIC_DB_PORT: 3306
           AVIC_DB_NAME: avic_test
           AVIC_DB_USER: avic
           AVIC_DB_PASS: ci-only-password
@@ -95,8 +73,5 @@ jobs:
           php bin/migrate.php --status
           php bin/migrate.php
 
-      - name: Unit tests
-        run: vendor/bin/phpunit --testsuite unit
-
-      - name: Feature tests
-        run: vendor/bin/phpunit --testsuite feature
+      - name: Tests (domain, services, HTTP)
+        run: php bin/test.php
