@@ -1,0 +1,5 @@
+# Apache: point the virtual host's DocumentRoot at this folder.
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]
+Options -Indexes

@@ -1,6 +1,6 @@
 {
     "name": "geto-san/avic",
-    "description": "AVIC \u2014 motor insurance claims portal (claimant, adjuster, garage).",
+    "description": "AVIC — a simplified claims-management system modelled on Guidewire ClaimCenter (motor insurance, Uganda).",
     "type": "project",
     "license": "proprietary",
     "require": {
@@ -11,26 +11,11 @@
         "ext-pdo": "*",
         "ext-pdo_mysql": "*"
     },
-    "require-dev": {
-        "ext-curl": "*",
-        "phpunit/phpunit": "^9.6 || ^10.5"
-    },
-    "config": {
-        "sort-packages": true,
-        "optimize-autoloader": true
-    },
     "scripts": {
         "migrate": "@php bin/migrate.php",
-        "test": "phpunit",
-        "test:unit": "phpunit --testsuite unit",
-        "test:feature": "phpunit --testsuite feature",
-        "lint": "@php bin/lint.php"
-    },
-    "scripts-descriptions": {
-        "migrate": "Apply pending database migrations",
-        "test": "Run every test (the feature suite needs the avic_test database)",
-        "test:unit": "Run the unit tests only (no database needed)",
-        "test:feature": "Run the HTTP feature tests against a throwaway server + avic_test",
-        "lint": "Syntax-check every PHP file"
+        "seed": "@php bin/seed.php",
+        "serve": "@php -S 127.0.0.1:8080 -t public public/index.php",
+        "lint": "@php bin/lint.php",
+        "test": "@php bin/test.php"
     }
 }

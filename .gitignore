@@ -1,11 +1,5 @@
-# AVIC runtime files (created on demand; served by config/uploads.php)
-uploads/
-
-# local caches / editor junk
-.DS_Store
-*.swp
-
-# Composer / PHPUnit
+/.env
+/storage/uploads/
 /vendor/
 .phpunit.result.cache
-.phpunit.cache/
+*.log

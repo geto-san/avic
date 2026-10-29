@@ -1,41 +1,21 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Syntax-check every PHP file in the project (vendor/ and .git/ excluded).
- *
- *   php bin/lint.php        (or: composer lint)
- *
- * Silent on success; lists the broken files and exits 1 otherwise.
- */
-
-if (PHP_SAPI !== 'cli') {
-    http_response_code(404);
-    exit;
-}
-
+// php -l on every PHP file in the project (no dependencies needed).
 $root = dirname(__DIR__);
-$files = new RecursiveIteratorIterator(new RecursiveCallbackFilterIterator(
-    new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
-    static fn(SplFileInfo $f) => !in_array($f->getFilename(), ['vendor', '.git', 'node_modules'], true)
-));
-
-$checked = 0;
-$broken = [];
-foreach ($files as $file) {
-    if ($file->getExtension() !== 'php') {
+$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+$bad = 0;
+foreach ($it as $f) {
+    $p = $f->getPathname();
+    if (!str_ends_with($p, '.php') || str_contains($p, '/.git/') || str_contains($p, '/vendor/')) {
         continue;
     }
-    $checked++;
-    exec(escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($file->getPathname()) . ' 2>&1', $output, $code);
+    exec('php -l ' . escapeshellarg($p) . ' 2>&1', $out, $code);
     if ($code !== 0) {
-        $broken[] = $file->getPathname() . "\n    " . implode("\n    ", $output);
+        echo implode("\n", $out) . "\n";
+        $bad++;
     }
-    $output = [];
+    $out = [];
 }
-
-if ($broken) {
-    fwrite(STDERR, "Syntax errors:\n" . implode("\n", $broken) . "\n");
-    exit(1);
-}
-echo "OK: $checked PHP files, no syntax errors.\n";
+echo $bad ? "$bad file(s) with syntax errors\n" : "All PHP files OK\n";
+exit($bad ? 1 : 0);
