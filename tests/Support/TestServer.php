@@ -46,7 +46,6 @@ final class TestServer
 
         $env = getenv();
         $env['AVIC_UPLOAD_DIR'] = self::$uploadDir;
-        $env['AVIC_ALLOW_INSECURE_COOKIES'] = '1';   // the test server is plain http
         $env['AVIC_ENV'] = 'testing';
         $env['AVIC_PUBLIC_URL'] = "http://127.0.0.1:$port";
 

@@ -40,7 +40,7 @@ AVIC.pages.notifications = function (s) {
       if (!r.ok) return UI.toast((r.data?.message) || 'Could not update the notification.', 'bad');
       AVIC.rerender(AVIC.pages.notifications);
       UI.toast('Marked as read.');
-    });
+    }).catch(() => UI.toast('Could not update the notification. Please retry.', 'bad'));
   });
 
   const all = document.getElementById('mark-all');
@@ -51,6 +51,9 @@ AVIC.pages.notifications = function (s) {
       if (!r.ok) return UI.toast((r.data?.message) || 'Could not clear notifications.', 'bad');
       AVIC.rerender(AVIC.pages.notifications);
       UI.toast('All notifications marked read.');
+    }).catch(() => {
+      all.disabled = false;
+      UI.toast('Could not clear notifications. Please retry.', 'bad');
     });
   };
 };

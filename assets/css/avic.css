@@ -277,8 +277,8 @@ input[readonly], input[disabled], select[disabled] { background: var(--canvas-2)
 appearance:none; display:block; width:100%; font:inherit; color:inherit;
 }
 .dropzone.is-over { border-color: var(--role); background: var(--role-wash); }
-.dropzone__t { font-weight:600; font-size: var(--text-small); }
-.dropzone__d { font-size: var(--text-small); color:var(--muted); }
+.dropzone__t { display:block; font-weight:600; font-size: var(--text-small); }
+.dropzone__d { display:block; font-size: var(--text-small); color:var(--muted); }
 
 .files { display:grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap: 16px; margin-top: 16px; }
 .file { border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:var(--surface); }

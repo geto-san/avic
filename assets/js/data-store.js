@@ -105,4 +105,3 @@ AVIC.labels = {
   payment_method: { bank_transfer: 'Bank transfer', cheque: 'Cheque', mobile_money: 'Mobile money' },
   payout_status: { pending: 'Pending', processing: 'Processing', completed: 'Completed', failed: 'Failed' }
 };
-

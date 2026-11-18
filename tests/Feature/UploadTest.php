@@ -135,7 +135,6 @@ final class UploadTest extends FeatureTestCase
         $port = $this->freePort();
         $env = getenv() + [];
         $env['AVIC_UPLOAD_DIR'] = '/proc/avic-cannot-create-this';
-        $env['AVIC_ALLOW_INSECURE_COOKIES'] = '1';
         $process = proc_open([PHP_BINARY, '-S', "127.0.0.1:$port", '-t', dirname(__DIR__, 2)], [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, dirname(__DIR__, 2), $env);
         try {
             $this->waitFor($port);

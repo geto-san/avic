@@ -23,7 +23,7 @@ Tests also use Composer, curl, DOM/XML and Node.js for Playwright.
 3. php bin/migrate.php                 Apply pending schema migrations
    php bin/migrate.php --status        Show migration state
 4. php config/db/seed-demo.php         Optional demo data (development only)
-5. AVIC_ALLOW_INSECURE_COOKIES=1 php -S 127.0.0.1:8080 bin/serve-router.php
+5. php -S 127.0.0.1:8080 bin/serve-router.php
    Open http://127.0.0.1:8080. Use separate browser profiles for separate roles.
 
 Demo password: Demo2026! (unless AVIC_DEMO_SECRET was set while seeding)

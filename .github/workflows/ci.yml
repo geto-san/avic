@@ -16,9 +16,9 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.3'
           tools: composer:v2
@@ -29,7 +29,7 @@ jobs:
       - name: PHP syntax
         run: php bin/lint.php
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
@@ -69,9 +69,9 @@ jobs:
       AVIC_TEST_DB_PASS: ci-only-password
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: ${{ matrix.php }}
           extensions: pdo_mysql, mbstring, fileinfo, curl, dom, xml
@@ -124,21 +124,20 @@ jobs:
       AVIC_DB_USER: avic
       AVIC_DB_PASS: ci-only-password
       AVIC_UPLOAD_DIR: /tmp/avic-browser-uploads
-      AVIC_ALLOW_INSECURE_COOKIES: '1'
       AVIC_PUBLIC_URL: http://127.0.0.1:8080
       AVIC_BROWSER_MAIL_FILE: /tmp/avic-browser-mail.eml
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.3'
           extensions: pdo_mysql, mbstring, fileinfo
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npm ci --ignore-scripts
+      - run: ./node_modules/.bin/playwright install --with-deps chromium
       - name: Seed and start isolated application
         run: |
           php config/db/seed-demo.php
@@ -152,7 +151,7 @@ jobs:
           cat /tmp/avic-browser-server.log
           exit 1
       - run: npm run test:browser
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: browser-test-results

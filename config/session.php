@@ -17,13 +17,6 @@ function avicSession(bool $remember = false): void
         'samesite' => 'Lax',
     ];
 
-    // Dev-only escape hatch (see docblock). A real environment variable
-    // only — never read from $_SERVER/the request — so nothing a client
-    // sends can influence it. Never set this on a real deploy.
-    if (getenv('AVIC_ALLOW_INSECURE_COOKIES') === '1' && strtolower((string)getenv('AVIC_ENV')) !== 'production') {
-        $options['secure'] = false;
-    }
-
     session_name('AVICSESSID');
     session_set_cookie_params($options);
     ini_set('session.use_strict_mode', '1');

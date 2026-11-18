@@ -234,7 +234,7 @@ Adjuster.setupDocumentViewer = function (docs) {
         if (!r.ok) return UI.toast((r.data?.message) || 'Could not verify the document.', 'bad');
         UI.toast('Document marked verified.', 'ok');
         AVIC.rerender(Adjuster.review);
-      });
+      }).catch(() => UI.toast('Could not verify the document. Please retry.', 'bad'));
     };
     document.querySelectorAll('.thumb').forEach((t, i) => t.classList.toggle('is-on', i === current));
   }
@@ -327,7 +327,7 @@ Adjuster.setupGarageAssignment = function (c) {
       if (!r.ok) return UI.toast((r.data?.message) || 'Could not assign the garage.', 'bad');
       UI.toast('Work order sent to the garage.', 'ok');
       AVIC.rerender(Adjuster.review);
-    });
+    }).catch(() => UI.toast('Could not assign the garage. Please retry.', 'bad'));
   };
 };
 
@@ -416,7 +416,7 @@ Adjuster.setupDecisionForm = function (c, est, pol) {
           if (!r.ok) return UI.toast((r.data?.message) || 'Could not record the decision.', 'bad');
           UI.toast('Decision recorded. The claimant has been notified.', 'ok');
           setTimeout(() => location.href = 'queue.html', 1000);
-        });
+        }).catch(() => UI.toast('Could not record the decision. Refresh the claim before retrying.', 'bad'));
       }, 'Record decision');
   };
 };

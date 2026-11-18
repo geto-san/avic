@@ -357,7 +357,7 @@ Claimant.wizard = function (s) {
       if (!r.ok || !r.data) return UI.toast(r.data?.message || 'Could not save the draft.', 'bad');
       state.claimId = r.data.id;
       UI.toast('Draft saved to your claims. You can finish it any time.', 'ok');
-    });
+    }).catch(() => UI.toast('Could not save the draft to the server. Please retry.', 'bad'));
   };
 
   if (UI.qs('add')) document.getElementById('save-draft').classList.add('hidden');

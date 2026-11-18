@@ -197,7 +197,7 @@ UI.dropzone = function (zoneSel, listSel, onChange) {
   const zone = document.querySelector(zoneSel);
   const list = document.querySelector(listSel);
   if (!zone || !list) return;
-  const input = zone.querySelector('input[type=file]');
+  const input = document.getElementById(zone.getAttribute('aria-controls'));
   const picked = [];
 
   function render() {
@@ -233,7 +233,6 @@ UI.dropzone = function (zoneSel, listSel, onChange) {
   }
 
   zone.addEventListener('click', event => { if (event.target !== input) input?.click(); });
-  zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input?.click(); } });
   if (input) input.addEventListener('change', e => accept(e.target.files));
   ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('is-over'); }));
   ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('is-over'); }));

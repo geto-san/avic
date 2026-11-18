@@ -10,6 +10,8 @@ for (const width of [1366,390]) {
       page.on('pageerror', error => errors.push(error.message));
       await page.goto('/pages/auth/login.html'); await page.locator('#email').fill(email); await page.locator('#password').fill('Demo2026!');
       await page.getByRole('button',{name:'Sign in',exact:true}).click(); await expect(page).toHaveURL(/dashboard\.html$/);
+      const sessionCookie = (await context.cookies()).find(cookie => cookie.name === 'AVICSESSID');
+      expect(sessionCookie).toMatchObject({secure:true,httpOnly:true,sameSite:'Lax'});
       await page.locator('.shell.is-ready').waitFor();
       const claimId = await page.evaluate(() => AVIC.claims[0]?.id);
       for (const filename of fs.readdirSync('pages/' + role).filter(name => name.endsWith('.html'))) {

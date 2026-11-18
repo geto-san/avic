@@ -91,11 +91,11 @@
           <div class="panel__head"><h2>Add your photos and documents</h2>
             <div class="spacer"></div><span class="small muted">JPEG, PNG, WEBP or PDF · up to 10 MB each</span></div>
           <div class="panel__body">
-            <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Add files">
-              <div class="dropzone__t">Drop files here, or press to browse</div>
-              <div class="dropzone__d">Photos of the damage, the police report, anything a garage has given you</div>
-              <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" hidden id="claim-file-input" aria-label="Attach claim documents and photos">
-            </div>
+            <button type="button" class="dropzone" id="dropzone" aria-label="Add files" aria-controls="claim-file-input">
+              <span class="dropzone__t">Drop files here, or press to browse</span>
+              <span class="dropzone__d">Photos of the damage, the police report, anything a garage has given you</span>
+            </button>
+            <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" hidden id="claim-file-input" aria-label="Attach claim documents and photos">
             <div class="files" id="filelist"></div>
             <div class="note" style="margin-top:16px">Clear photos of each damaged panel, plus one wide shot of the whole vehicle, settle a claim fastest.</div>
 

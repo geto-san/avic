@@ -51,7 +51,7 @@ done
 [[ -f "$runtime/password" ]] || php -r 'echo bin2hex(random_bytes(24));' >"$runtime/password"
 export AVIC_ENV=development AVIC_DB_HOST=localhost AVIC_DB_SOCKET="$runtime/mysql.sock"
 export AVIC_DB_NAME=avic_demo AVIC_DB_USER=avic_demo AVIC_DB_PASS="$(cat "$runtime/password")"
-export AVIC_DB_COLLATION=utf8mb4_unicode_ci AVIC_ALLOW_INSECURE_COOKIES=1
+export AVIC_DB_COLLATION=utf8mb4_unicode_ci
 export AVIC_UPLOAD_DIR="$runtime/uploads" AVIC_PUBLIC_URL="http://127.0.0.1:$port"
 export AVIC_MAIL_FROM=no-reply@localhost.test AVIC_DEMO_SECRET='Demo2026!'
 unset AVIC_DB_PORT

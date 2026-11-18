@@ -70,7 +70,11 @@ for (const viewport of [{width: 1366, height: 900}, {width: 390, height: 844}]) 
       await claimant.locator('#incident_location').fill('Browser test road ' + unique);
       await claimant.locator('#incident_description').fill('Vehicle damaged while parked.');
       await claimant.getByRole('button', {name: 'Continue', exact: true}).click();
-      await claimant.locator('#claim-file-input').setInputFiles({name: 'vehicle-photo.png', mimeType: 'image/png',
+      const fileChooserPromise = claimant.waitForEvent('filechooser');
+      await claimant.getByRole('button', {name:'Add files',exact:true}).focus();
+      await claimant.keyboard.press('Enter');
+      const fileChooser = await fileChooserPromise;
+      await fileChooser.setFiles({name: 'vehicle-photo.png', mimeType: 'image/png',
         buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')});
       await expect(claimant.locator('#filelist')).toContainText('vehicle-photo.png');
       await claimant.getByRole('button', {name: 'Continue', exact: true}).click();

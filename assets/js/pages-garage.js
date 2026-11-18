@@ -144,6 +144,9 @@ Garage.estimateForm = function (s) {
           if (!r.ok) return UI.toast((r.data?.message) || 'Could not send the quote.', 'bad');
           UI.toast('Quote sent. The adjuster will review it.', 'ok');
           setTimeout(() => location.href = 'estimates.html', 900);
+        }).catch(() => {
+          if (btn) btn.disabled = false;
+          UI.toast('Could not send the quote. Please retry.', 'bad');
         });
       }, 'Send quote');
   };
