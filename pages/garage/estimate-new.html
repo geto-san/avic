@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<title>Quote a job · AVIC</title>
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/data-store.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/api.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/pages-garage.js" defer></script>
+</head>
+<body data-title="Prepare quote" data-page="estimate-new" data-allow="garage" data-role="garage">
+<noscript><div class="noscript">Enable JavaScript to use this application.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
+
+      <div id="adj-note"></div>
+
+      <div class="grid grid--wide">
+        <div class="panel">
+          <div class="panel__head"><h2>Your quote</h2></div>
+          <div class="panel__body">
+            <form id="estimate-form" autocomplete="off">
+              <div class="row3">
+                <div class="field"><label for="parts_cost">Parts (UGX)</label>
+                  <input type="number" min="0" step="1000" id="parts_cost" name="parts_cost" data-required>
+                  <div class="err">Enter a parts figure, or 0.</div></div>
+                <div class="field"><label for="labor_cost">Labour (UGX)</label>
+                  <input type="number" min="0" step="1000" id="labor_cost" name="labor_cost" data-required>
+                  <div class="err">Enter a labour figure, or 0.</div></div>
+                <div class="field"><label for="other_cost">Other (UGX)</label>
+                  <input type="number" min="0" step="1000" id="other_cost" name="other_cost"></div>
+              </div>
+              <div class="row2">
+                <div class="field"><label for="repair_days">Working days needed</label>
+                  <input type="number" min="1" id="repair_days" name="repair_days" data-required>
+                  <div class="err">How long will the repair take?</div></div>
+                <div class="field"><label for="est-total">Quote total</label>
+                  <output class="ledger__v mono" id="est-total"><span class="unit">UGX</span>0</output></div>
+              </div>
+              <div class="btnrow">
+                <button class="btn btn--primary" type="submit">Send quote to the adjuster</button>
+                <a class="btn" href="work-orders.html">Cancel</a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel">
+            <div class="panel__head"><h2>Vehicle and damage</h2></div>
+            <div class="panel__body" id="c-vehicle"></div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>

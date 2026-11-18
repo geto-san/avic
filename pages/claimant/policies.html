@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<title>Policies · AVIC</title>
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/data-store.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/api.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/policy-registration-ui.js" defer></script>
+<script src="../../assets/js/pages-existing-policies.js" defer></script>
+</head>
+<body data-title="Policies" data-page="policies" data-allow="claimant" data-role="claimant">
+<noscript><div class="noscript">Enable JavaScript to use this application.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
+
+      <details class="panel" id="policy-editor" open><summary>Add an existing insurance policy</summary>
+<form id="policy-form">
+
+<div class="panel__body">
+<div id="policy-message" role="status" tabindex="-1"></div>
+<input type="hidden" name="id"><div class="row2"><div class="field"><label for="insurer_name">Insurance company</label><input type="text" id="insurer_name" name="insurer_name" maxlength="150" required><div class="err" id="insurer_name-error"></div></div><div class="field"><label for="policy_number">Policy number</label><input type="text" id="policy_number" name="policy_number" maxlength="50" required><div class="err" id="policy_number-error"></div></div></div>
+<p>Copy the details from your existing policy. An adjuster must verify them before you can file a claim against this cover.</p>
+<div class="row2"><div class="field"><label for="vehicle_make">Make</label><input id="vehicle_make" name="vehicle_make" type="text" maxlength="60" required aria-describedby="vehicle_make-error"><div class="err" id="vehicle_make-error"></div></div>
+<div class="field"><label for="vehicle_model">Model</label><input id="vehicle_model" name="vehicle_model" type="text" maxlength="60" required aria-describedby="vehicle_model-error"><div class="err" id="vehicle_model-error"></div></div>
+<div class="field"><label for="vehicle_plate">Number plate</label><input id="vehicle_plate" name="vehicle_plate" type="text" maxlength="20" required aria-describedby="vehicle_plate-error"><div class="err" id="vehicle_plate-error"></div></div>
+<div class="field"><label for="vehicle_year">Year</label><input id="vehicle_year" name="vehicle_year" type="number" min="1901" required aria-describedby="vehicle_year-error"><div class="err" id="vehicle_year-error"></div></div>
+<div class="field"><label for="coverage_limit">Coverage limit (UGX)</label><input id="coverage_limit" name="coverage_limit" type="number" min="0.01" step="0.01" required aria-describedby="coverage_limit-error"><div class="err" id="coverage_limit-error"></div></div>
+<div class="field"><label for="premium">Premium (UGX, optional)</label><input id="premium" name="premium" type="number" min="0.01" step="0.01" aria-describedby="premium-error"><div class="err" id="premium-error"></div></div>
+<div class="field"><label for="start_date">Cover starts</label><input id="start_date" name="start_date" type="date"  required aria-describedby="start_date-error"><div class="err" id="start_date-error"></div></div>
+<div class="field"><label for="end_date">Cover ends</label><input id="end_date" name="end_date" type="date"  required aria-describedby="end_date-error"><div class="err" id="end_date-error"></div></div>
+</div>
+<div class="field"><label for="coverage_type">Coverage type</label><select id="coverage_type" name="coverage_type" required><option value="comprehensive">Comprehensive</option><option value="basic">Basic</option><option value="third_party">Third party</option></select></div>
+<button class="btn btn--primary" type="submit">Submit for verification</button>
+</div></form></details><p id="policy-status" role="status" tabindex="-1"></p>
+<section aria-label="Policy registrations" id="policy-registrations"></section>
+<section aria-label="Verified policies" id="policy-list"></section>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>

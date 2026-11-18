@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<title>Garage dashboard · AVIC</title>
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/data-store.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/api.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/pages-garage.js" defer></script>
+</head>
+<body data-title="Dashboard" data-page="dashboard" data-allow="garage" data-role="garage">
+<noscript><div class="noscript">Enable JavaScript to use this application.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
+
+      <div class="ledger">
+        <div class="ledger__cell"><div class="ledger__k">Open work orders</div><div class="ledger__v" id="k-open">0</div><div class="ledger__n">waiting on you</div></div>
+        <div class="ledger__cell"><div class="ledger__k">Quotes with the adjuster</div><div class="ledger__v" id="k-pending">0</div><div class="ledger__n">awaiting a decision</div></div>
+        <div class="ledger__cell"><div class="ledger__k">Approved jobs</div><div class="ledger__v" id="k-approved">0</div><div class="ledger__n">cleared to start</div></div>
+        <div class="ledger__cell"><div class="ledger__k">Approved value</div><div class="ledger__v" id="k-value">0</div><div class="ledger__n">across approved quotes</div></div>
+      </div>
+
+      <div class="grid grid--wide">
+        <div class="panel">
+          <div class="panel__head"><h2>Jobs on your bench</h2></div>
+          <div id="orders"></div>
+        </div>
+        <div>
+          <div class="note">You are shown the vehicle and the damage only. Owner details and settlement figures stay with the adjuster.</div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>

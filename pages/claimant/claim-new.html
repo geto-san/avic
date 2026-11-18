@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<title>File a claim · AVIC</title>
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/data-store.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/api.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/pages-claimant.js" defer></script>
+</head>
+<body data-title="File a claim" data-page="claim-new" data-allow="claimant" data-role="claimant">
+<noscript><div class="noscript">Enable JavaScript to use this application.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
+
+      <div class="steps">
+        <div class="step is-on"><span class="step__n">1</span><span class="step__t">Policy</span></div>
+        <div class="step"><span class="step__n">2</span><span class="step__t">What happened</span></div>
+        <div class="step"><span class="step__n">3</span><span class="step__t">Documents</span></div>
+        <div class="step"><span class="step__n">4</span><span class="step__t">Repair estimate</span></div>
+        <div class="step"><span class="step__n">5</span><span class="step__t">Check and send</span></div>
+      </div>
+
+      <form id="wizard" class="panel" autocomplete="off">
+
+        <section class="wizstep">
+          <div class="panel__head"><h2>Which vehicle is this about?</h2></div>
+          <div class="panel__body">
+            <div class="field">
+              <label for="policy_id">Policy</label>
+              <select id="policy_id" name="policy_id" data-required></select>
+              <div class="hint">Only policies in your name appear here.</div>
+              <div class="err">Choose the policy this claim belongs to.</div>
+            </div>
+            <div id="vehicle-box"><p class="muted small">Pick a policy and the vehicle on cover appears here.</p></div>
+          </div>
+        </section>
+
+        <section class="wizstep hidden">
+          <div class="panel__head"><h2>What happened?</h2></div>
+          <div class="panel__body">
+            <div class="field">
+              <label for="claim_type">Type of incident</label>
+              <input type="hidden" name="claim_type" id="claim_type" data-required>
+              <div class="choices">
+                <button type="button" class="choice" aria-pressed="false" data-type="collision"><span class="choice__t">Collision</span><span class="choice__d">Another vehicle or object</span></button>
+                <button type="button" class="choice" aria-pressed="false" data-type="theft"><span class="choice__t">Theft</span><span class="choice__d">Vehicle or parts taken</span></button>
+                <button type="button" class="choice" aria-pressed="false" data-type="vandalism"><span class="choice__t">Vandalism</span><span class="choice__d">Deliberate damage</span></button>
+                <button type="button" class="choice" aria-pressed="false" data-type="fire"><span class="choice__t">Fire</span><span class="choice__d">Burn or heat damage</span></button>
+                <button type="button" class="choice" aria-pressed="false" data-type="natural_disaster"><span class="choice__t">Weather</span><span class="choice__d">Flood, hail, falling tree</span></button>
+                <button type="button" class="choice" aria-pressed="false" data-type="other"><span class="choice__t">Something else</span><span class="choice__d">Describe it below</span></button>
+              </div>
+              <div class="err">Choose the type of incident.</div>
+            </div>
+            <div class="row2">
+              <div class="field">
+                <label for="incident_date">Date of the incident</label>
+                <input type="date" id="incident_date" name="incident_date" data-required>
+                <div class="err">Tell us when it happened.</div>
+              </div>
+              <div class="field">
+                <label for="police_report_ref">Police reference (if reported)</label>
+                <input type="text" id="police_report_ref" name="police_report_ref" placeholder="CPS/KLA/2026/0000">
+              </div>
+            </div>
+            <div class="field">
+              <label for="incident_location">Where it happened</label>
+              <input type="text" id="incident_location" name="incident_location" placeholder="Road, area, town" data-required>
+              <div class="err">A road or area name is enough.</div>
+            </div>
+            <div class="field">
+              <label for="incident_description">Describe the damage <span class="counter" id="desc-count"></span></label>
+              <textarea id="incident_description" name="incident_description" maxlength="600" data-required
+                data-counter data-counter-target="#desc-count"
+                placeholder="What happened, which parts of the vehicle were affected, and who else was involved."></textarea>
+              <div class="err">Describe what happened.</div>
+            </div>
+
+          </div>
+        </section>
+
+        <section class="wizstep hidden">
+          <div class="panel__head"><h2>Add your photos and documents</h2>
+            <div class="spacer"></div><span class="small muted">JPEG, PNG, WEBP or PDF · up to 10 MB each</span></div>
+          <div class="panel__body">
+            <button type="button" class="dropzone" id="dropzone" aria-label="Add files" aria-controls="claim-file-input">
+              <span class="dropzone__t">Drop files here, or press to browse</span>
+              <span class="dropzone__d">Photos of the damage, the police report, anything a garage has given you</span>
+            </button>
+            <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" hidden id="claim-file-input" aria-label="Attach claim documents and photos">
+            <div class="files" id="filelist"></div>
+            <div class="note" style="margin-top:16px">Clear photos of each damaged panel, plus one wide shot of the whole vehicle, settle a claim fastest.</div>
+
+          </div>
+        </section>
+
+        <section class="wizstep hidden">
+          <div class="panel__head"><h2>Repair estimate</h2><div class="spacer"></div><span class="small muted">Optional at this stage</span></div>
+          <div class="panel__body">
+            <p class="muted small">Enter the estimated repair costs if you know them. The adjuster can assign a garage for a formal quote.</p>
+            <div class="row3">
+              <div class="field"><label for="parts_cost">Parts (UGX)</label><input type="number" min="0" step="1000" id="parts_cost" name="parts_cost"></div>
+              <div class="field"><label for="labor_cost">Labour (UGX)</label><input type="number" min="0" step="1000" id="labor_cost" name="labor_cost"></div>
+              <div class="field"><label for="other_cost">Other (UGX)</label><input type="number" min="0" step="1000" id="other_cost" name="other_cost"></div>
+            </div>
+            <div class="ledger" style="margin-bottom:0">
+              <div class="ledger__cell"><div class="ledger__k">Estimate total</div>
+                <div class="ledger__v mono" id="est-total"><span class="unit">UGX</span>0</div>
+                <div class="ledger__n">an adjuster confirms the final figure</div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="wizstep hidden">
+          <div class="panel__head"><h2>Check and send</h2></div>
+          <div class="panel__body">
+            <div id="summary"></div>
+            <div class="check" style="margin-top:18px">
+              <input type="checkbox" id="confirm_true" name="confirm_true">
+              <label for="confirm_true">Everything above is true and complete to the best of my knowledge. I understand a false claim can void my policy.</label>
+            </div>
+          </div>
+        </section>
+
+        <div class="wizard__foot">
+          <button type="button" class="btn hidden" id="back">Back</button>
+          <button type="button" class="btn" id="save-draft">Save draft</button>
+          <span class="autosave" id="autosave">Draft saves every minute</span>
+          <div style="flex:1"></div>
+          <button type="button" class="btn btn--primary" id="next">Continue</button>
+          <button type="button" class="btn btn--primary hidden" id="submit">Submit claim</button>
+        </div>
+      </form>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>

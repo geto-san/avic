@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<title>Claimant dashboard · AVIC</title>
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/data-store.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/api.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/pages-claimant.js" defer></script>
+</head>
+<body data-title="Dashboard" data-page="dashboard" data-allow="claimant" data-role="claimant">
+<noscript><div class="noscript">Enable JavaScript to use this application.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
+
+      <div class="ledger">
+        <div class="ledger__cell"><div class="ledger__k">Claims in progress</div><div class="ledger__v" id="k-open">0</div><div class="ledger__n">awaiting a decision</div></div>
+        <div class="ledger__cell"><div class="ledger__k">Unfinished drafts</div><div class="ledger__v" id="k-draft">0</div><div class="ledger__n">saved but not sent</div></div>
+        <div class="ledger__cell"><div class="ledger__k">Paid to you</div><div class="ledger__v" id="k-paid">0</div><div class="ledger__n">across all settled claims</div></div>
+        <div class="ledger__cell"><div class="ledger__k">Active policies</div><div class="ledger__v" id="k-policies">0</div><div class="ledger__n">vehicles on cover</div></div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div class="panel" id="active-claim"></div>
+          <div class="panel">
+            <div class="panel__head"><h2>Recent claims</h2><div class="spacer"></div>
+              <a class="btn btn--sm" href="claims.html">See all</a></div>
+            <div id="recent"></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>
