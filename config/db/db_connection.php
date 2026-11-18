@@ -1,21 +1,10 @@
 <?php
-declare(strict_types=1); // Strict typing for better type safety (makes PHP enforce argument types strictly instead of silently coercing (e.g. a string "5" won't quietly become an int))
+declare(strict_types=1);
 
-/**
- * Database connection, configured from the environment:
- *
- *   AVIC_DB_HOST   default localhost
- *   AVIC_DB_PORT   optional (default: the driver's 3306)
- *   AVIC_DB_NAME   default avic_portal
- *   AVIC_DB_USER   default avic
- *   AVIC_DB_PASS   default: a public dev-only password (see below)
- *   AVIC_ENV       "production" turns the dev defaults into hard errors
- *
- * With nothing set you get the local-development setup from the README, so a
- * fresh checkout still runs. With AVIC_ENV=production the dev password is NOT
- * accepted — the app refuses to start rather than run on a guessable credential.
- * See .env.example.
- */
+// Store and compare timestamps in UTC in both PHP and MySQL sessions.
+date_default_timezone_set('UTC');
+
+/* Database connection, configured from the environment: */
 
 const AVIC_DEV_DB_PASSWORD = '12345678';
 
@@ -33,6 +22,7 @@ function avicConfigFail(string $logMessage, string $publicMessage): void
 
 $server   = getenv('AVIC_DB_HOST') ?: 'localhost';
 $port     = (string)(getenv('AVIC_DB_PORT') ?: '');
+$socket   = (string)(getenv('AVIC_DB_SOCKET') ?: ''); // Optional private local database socket.
 $dbname   = getenv('AVIC_DB_NAME') ?: 'avic_portal';
 $user     = getenv('AVIC_DB_USER') ?: 'avic';
 $password = getenv('AVIC_DB_PASS');
@@ -53,7 +43,7 @@ if ($port !== '' && !ctype_digit($port)) {
 
 try {
     $conn = new PDO(
-        "mysql:host=$server;" . ($port !== '' ? "port=$port;" : '') . "dbname=$dbname;charset=utf8mb4", // utf8mb4 so that multi-byte characters (emoji, accented names) store correctly.
+        'mysql:' . ($socket !== '' ? "unix_socket=$socket;" : "host=$server;" . ($port !== '' ? "port=$port;" : '')) . "dbname=$dbname;charset=utf8mb4", // utf8mb4 preserves accented names and other Unicode text.
         $user,
         $password,
         [
@@ -62,6 +52,7 @@ try {
             PDO::ATTR_EMULATE_PREPARES   => false,                  // Use native prepared statements if possible (more secure, faster)
         ]
     );
+    $conn->exec("SET time_zone = '+00:00'");
 } catch (PDOException $e) {
     error_log($e->getMessage());
     http_response_code(500);

@@ -1,14 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Apply database migrations.
- *
- *   php bin/migrate.php            apply whatever is pending
- *   php bin/migrate.php --status   list applied / pending, change nothing
- *
- * Connection settings come from the environment (see .env.example).
- */
+/* Apply database migrations. */
 
 if (PHP_SAPI !== 'cli') {
     http_response_code(404);

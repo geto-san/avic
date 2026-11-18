@@ -1,20 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * POST config/api/claims-decision.php
- *
- * Adjuster decision on a claim: approve, reject, or request documents.
- * Approving opens a payout row; rejecting records the reason; asking for
- * documents parks the claim back on the claimant. Everything lands in the
- * status history, the adjuster_reviews table, the audit log and the
- * claimant's notification feed.
- *
- * A decision can only be recorded on a claim that is still open (see
- * claim-state.php), and the whole thing is one transaction under a row lock:
- * approving the same claim twice — or from two tabs at once — creates exactly
- * one payout, and the loser gets a 409.
- */
+/* POST config/api/claims-decision.php */
 
 require_once __DIR__ . '/_helpers.php';
 
@@ -39,7 +26,7 @@ if (!in_array($decision, ['approve', 'reject', 'request_docs'], true)) {
 
 try {
     apiCanSeeClaim($conn, $user, $claimId); // 404 / 403 before we take any lock
-    $result = inTransaction($conn, static fn() => recordDecision($conn, $user, $claimId, $decision, $amount, $notes));
+    $result = inTransaction($conn, static fn() => recordDecision($conn, $user, $claimId, $decision, $amount, $notes, is_array($input['documents'] ?? null) ? $input['documents'] : []));
     apiJson(200, ['ok' => true] + $result);
 } catch (PDOException $e) {
     error_log($e->getMessage());
@@ -53,8 +40,9 @@ try {
  *
  * @return array{status:string, claim_number:string}
  */
-function recordDecision(PDO $conn, array $user, int $claimId, string $decision, ?float $amount, ?string $notes): array
+function recordDecision(PDO $conn, array $user, int $claimId, string $decision, ?float $amount, ?string $notes, array $documents = []): array
 {
+    // 1. Lock the claim and check whether its current state permits this decision.
     $claim = claimLock($conn, $claimId);
     $closure = ['approve' => 'approved', 'reject' => 'rejected', 'request_docs' => 'pending_docs'];
     $newStatus = $closure[$decision];
@@ -65,37 +53,27 @@ function recordDecision(PDO $conn, array $user, int $claimId, string $decision, 
         : 'This claim is ' . claimStatusWords($current) . ', so a decision cannot be recorded on it.';
     claimAssertMove($current, $newStatus, $refusal);
 
-    if ($decision === 'approve') {
-        $policy = $conn->prepare('SELECT * FROM policies WHERE id = :id');
-        $policy->execute(['id' => $claim['policy_id']]);
-        $pol = $policy->fetch();
-        if (!$pol) {
-            /* fail closed: never approve against a policy that is not on file */
-            throw new ApiAbort('There is no policy on file for this claim, so it cannot be approved.', 422);
-        }
-        if ($amount === null || $amount <= 0) {
-            throw new ApiAbort('Set an amount to approve.', 422);
-        }
-        $inPeriod = ($claim['incident_date'] >= $pol['start_date']) && ($claim['incident_date'] <= $pol['end_date']);
-        if (!$inPeriod) {
-            throw new ApiAbort('The incident falls outside the policy period (' . substr($pol['start_date'], 0, 10) .
-                               ' to ' . substr($pol['end_date'], 0, 10) . '), so there is no cover.', 422);
-        }
-        if (in_array($pol['coverage_type'], ['basic'], true) &&
-            in_array($claim['claim_type'], ['fire', 'theft', 'natural_disaster'], true)) {
-            throw new ApiAbort('This peril is not covered under the basic tier of the policy.', 422);
-        }
-        if ($amount > (float)$pol['coverage_limit']) {
-            throw new ApiAbort('The approved amount exceeds the cover limit on this policy.', 422);
-        }
+    if ($decision === 'request_docs') {
+        $structured = (bool)$documents;
+        $documents = requestedDocumentChoices($documents, $notes);
+        if ($structured) $notes = implode("\n", array_column($documents, 'document_name')) . ($notes ? "\n\n" . $notes : '');
+    }
+    if (in_array($decision, ['reject', 'request_docs'], true)) {
+        $notes = workflowText($notes, $decision === 'reject' ? 'a clear rejection reason' : 'the exact documents required, one per line');
     }
 
+    // 2. Approval needs a positive amount, a covered date/peril and a valid limit.
+    if ($decision === 'approve') {
+        assertPolicyCoverage($conn, $claim, $amount ?? 0);
+    }
+
+    // 3. Update the claim and record who decided, what changed and why.
     $conn->prepare(
         'UPDATE claims SET status = :status,
             approved_amount = IF(:approve = 1, :amount, approved_amount),
             rejection_reason = IF(:reject = 1, :reason, rejection_reason),
             reviewed_at = NOW(),
-            resolved_at = IF(:resolved = 1, NOW(), reviewed_at),
+            resolved_at = IF(:resolved = 1, NOW(), resolved_at),
             updated_at = NOW()
          WHERE id = :id'
     )->execute([
@@ -120,8 +98,11 @@ function recordDecision(PDO $conn, array $user, int $claimId, string $decision, 
          ]);
     audit($conn, $user, 'claim.decision', 'claim', $claimId, ['status' => $claim['status']], ['status' => $newStatus, 'decision' => $decision, 'amount' => $amount]);
 
+    // 4. Approval creates a pending payout record; every outcome notifies the owner.
+    // This records a proposed settlement. It does not send money to a provider.
     $claimant = (int)$claim['user_id'];
     if ($decision === 'approve') {
+        $conn->prepare('INSERT INTO claim_settlements (claim_id) VALUES (?)')->execute([$claimId]);
         $claimantRow = $conn->prepare('SELECT full_name, phone FROM users WHERE id = :id');
         $claimantRow->execute(['id' => $claimant]);
         $who = $claimantRow->fetch();
@@ -141,9 +122,14 @@ function recordDecision(PDO $conn, array $user, int $claimId, string $decision, 
             'Claim rejected',
             $claim['claim_number'] . ' was rejected. ' . ($notes ?? 'See your claim for the reason.'));
     } else {
+        $conn->prepare('INSERT INTO claim_document_requests (claim_id, requested_by, details) VALUES (?, ?, ?)')->execute([$claimId, $user['id'], $notes]);
+        $requestId = (int)$conn->lastInsertId();
+        foreach ($documents as $document) {
+            $conn->prepare('INSERT INTO requested_documents (request_id, document_type, document_name) VALUES (?, ?, ?)')->execute([$requestId, $document['document_type'], $document['document_name']]);
+        }
         notify($conn, $claimant, $claimId, 'status_changed',
             'More documents needed',
-            $claim['claim_number'] . ' needs more documents before it can be assessed.');
+            $claim['claim_number'] . ' — documents required: ' . $notes);
     }
 
     return ['status' => $newStatus, 'claim_number' => (string)$claim['claim_number']];

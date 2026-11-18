@@ -1,44 +1,24 @@
 <?php
 declare(strict_types=1);
 
-/**
- * POST config/api/claims.php
- *
- * File + submit claims from the claimant wizard.
- *
- *   mode   = 'draft' | 'submit'
- *   id     = existing claim to update (draft resume, or pending_docs add-docs)
- *   fields = policy_id, claim_type, incident_date, incident_location,
- *            incident_description, police_report_ref, estimated_damage
- *   files  = files[] (multipart only when submitting)
- *
- * Drafts persist server-side so they survive reload and other devices;
- * submitted claims are routed to the quietest adjuster in one go.
- *
- * A claimant can only touch a claim that is still theirs to edit: a draft
- * (save or submit) or one waiting for documents (submit again). Anything
- * further along is refused with a 409 — see claim-state.php. The whole write
- * (claim row, uploads, history, audit, notifications) is one transaction.
- */
+/* POST config/api/claims.php */
 
 require_once __DIR__ . '/_helpers.php';
 
-const CLAIM_TYPES = ['collision', 'theft', 'vandalism', 'fire', 'natural_disaster', 'other'];
+// Reading path: request checks -> input validation -> persistClaim() -> JSON reply.
+// Follow the browser side in Claimant.wizard() in assets/js/pages-claimant.js.
 
-/** True for a real calendar date written exactly as YYYY-MM-DD. */
-function isIsoDate(string $value): bool
-{
-    $date = DateTime::createFromFormat('!Y-m-d', $value);
-    return $date !== false && $date->format('Y-m-d') === $value;
-}
+const CLAIM_TYPES = ['collision', 'theft', 'vandalism', 'fire', 'natural_disaster', 'other'];
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     apiJson(405, ['message' => 'Method not allowed']);
 }
 
+// 1. Identify the caller from the PHP session, never from a submitted user ID.
 $user = apiUser(['claimant']);
 $uid  = (int)$user['id'];
 
+// 2. Drafts arrive as JSON; submissions can carry files using multipart form data.
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 if (str_starts_with($contentType, 'application/json')) {
     $input = json_decode(file_get_contents('php://input'), true);
@@ -82,30 +62,29 @@ try {
         if (!in_array($claimType, CLAIM_TYPES, true)) {
             $claimType = 'other';
         }
-        if (!isIsoDate($incidentDate)) {
+        if (!validDate($incidentDate)) {
             $incidentDate = date('Y-m-d');
         }
     }
 
+    // 3. A submission needs complete details and an active policy owned by this user.
     if ($mode === 'submit') {
-        $required = [
-            'policy_id' => "CHOOSE_POLICY",
-            'claim_type' => "CHOOSE_TYPE",
-            'incident_date' => "CHOOSE_DATE",
-            'incident_location' => "LOCATION_REQUIRED",
-            'incident_description' => "DESCRIPTION_REQUIRED",
+        $requiredValues = [
+            $policyId,
+            $claimType,
+            $incidentDate,
+            $location,
+            $description,
         ];
-        foreach ([['k' => 'policy_id', 'v' => $policyId], ['k' => 'claim_type', 'v' => $claimType],
-                  ['k' => 'incident_date', 'v' => $incidentDate], ['k' => 'incident_location', 'v' => $location],
-                  ['k' => 'incident_description', 'v' => $description]] as $f) {
-            if ($f['v'] === '' || $f['v'] === 0) {
+        foreach ($requiredValues as $value) {
+            if ($value === '' || $value === 0) {
                 apiJson(422, ['message' => 'Fill in every required field.']);
             }
         }
         if (!in_array($claimType, CLAIM_TYPES, true)) {
             apiJson(422, ['message' => 'Choose a valid claim type.']);
         }
-        if (!isIsoDate($incidentDate)) {
+        if (!validDate($incidentDate)) {
             apiJson(422, ['message' => 'Enter the incident date as a real date (YYYY-MM-DD).']);
         }
         /* a day of slack so a claimant whose "today" is ahead of the server's is not refused */
@@ -129,6 +108,7 @@ try {
         'estimated_damage'      => $estDamage,
     ];
 
+    // 4. Save related database records in one transaction; then return the result.
     $result = inTransaction($conn, static fn() => persistClaim($conn, $user, $mode, $existingId, $fields, $files));
 
     apiJson(200, ['ok' => true] + $result);
@@ -149,8 +129,20 @@ function persistClaim(PDO $conn, array $user, string $mode, int $existingId, arr
     $uid = (int)$user['id'];
     $submit = $mode === 'submit';
 
+    $row = $existingId ? claimLock($conn, $existingId) : null;
+    if ($row && $row['status'] === 'pending_docs') {
+        $requests = $conn->prepare('SELECT d.id FROM requested_documents d JOIN claim_document_requests r ON r.id = d.request_id WHERE r.claim_id = ? AND r.status = "open" LIMIT 1');
+        $requests->execute([$existingId]);
+        if ($requests->fetchColumn()) throw new ApiAbort('Use the requested-document upload screen to answer this request.', 409);
+    }
+    $policy = policyLock($conn, (int)$fields['policy_id']);
+    if ((int)$policy['user_id'] !== $uid || $policy['status'] !== 'active') {
+        throw new ApiAbort('Choose one of your own active policies.', 422);
+    }
+    if ($submit) assertNoDuplicateIncident($conn, $fields, $existingId);
+
+    // Existing claim: check its current state. New claim: insert a row.
     if ($existingId) {
-        $row = claimLock($conn, $existingId);
         if ((int)$row['user_id'] !== $uid) {
             throw new ApiAbort('That claim belongs to another policy holder.', 403);
         }
@@ -184,7 +176,7 @@ function persistClaim(PDO $conn, array $user, string $mode, int $existingId, arr
         $claimNumber = (string)$row['claim_number'];
     } else {
         $oldStatus = null;
-        $claimNumber = nextClaimNumber($conn);
+        $claimNumber = 'CLM-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(8)));
         $adjuster = $submit ? leastBusyAdjuster($conn) : null;
         $conn->prepare(
             'INSERT INTO claims (claim_number, user_id, policy_id, adjuster_id, incident_date, incident_location,
@@ -203,13 +195,22 @@ function persistClaim(PDO $conn, array $user, string $mode, int $existingId, arr
         $claimId = (int)$conn->lastInsertId();
     }
 
-    /* ---- document uploads ---- */
+    /* Store file bytes on disk and document metadata in MySQL. A database
+       rollback does not undo files already moved to disk. */
     $savedDocs = 0;
     if ($submit && $files) {
         $savedDocs = saveUploads($conn, $claimId, $uid, filesToArrays($files));
     }
 
     if ($submit) {
+        if ($oldStatus === 'pending_docs' && $savedDocs === 0) {
+            $request = $conn->prepare('SELECT id FROM claim_document_requests WHERE claim_id = ? AND status = "open"');
+            $request->execute([$claimId]);
+            if ($request->fetchColumn()) throw new ApiAbort('Attach the requested documents before submitting your response.', 422);
+        }
+        if ($oldStatus === 'pending_docs' && $savedDocs > 0) {
+            $conn->prepare('UPDATE claim_document_requests SET status = "answered", answered_at = NOW() WHERE claim_id = ? AND status = "open"')->execute([$claimId]);
+        }
         $conn->prepare('INSERT INTO claim_status_history (claim_id, changed_by, from_status, to_status, notes)
                         VALUES (:cid, :by, :from, :to, :notes)')
              ->execute(['cid' => $claimId, 'by' => $uid, 'from' => $oldStatus ?: 'draft', 'to' => 'submitted', 'notes' => 'Claim submitted by policy holder']);
@@ -236,21 +237,6 @@ function claimEditRefusal(string $status, bool $submit): string
         return 'This claim is waiting for documents. Add them and submit it; it cannot go back to a draft.';
     }
     return 'This claim is ' . claimStatusWords($status) . ' and can no longer be edited.';
-}
-
-function nextClaimNumber(PDO $conn): string
-{
-    for ($i = 0; $i < 20; $i++) {
-        $year = date('Y');
-        $seq = (int)$conn->query("SELECT COUNT(*) FROM claims WHERE claim_number LIKE 'CLM-$year-%'")->fetchColumn() + $i + 1;
-        $number = sprintf('CLM-%d-%05d', $year, $seq);
-        $exists = $conn->prepare('SELECT id FROM claims WHERE claim_number = :cn LIMIT 1');
-        $exists->execute(['cn' => $number]);
-        if (!$exists->fetch()) {
-            return $number;
-        }
-    }
-    return 'CLM-' . $year . '-' . bin2hex(random_bytes(3));
 }
 
 /** Normalize the $_FILES['files'] structure to an index-array of arrays. */

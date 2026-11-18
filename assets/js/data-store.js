@@ -1,21 +1,13 @@
-/* ============================================================
-   AVIC — data layer
-   These arrays used to be a hardcoded prototype dataset. They are now
-   empty containers that assets/js/api.js fills from the server
-   (config/api/bootstrap.php) for the signed-in user. Every list a page
-   renders still goes through the readers below, so the role visibility
-   rules live in one place and match the server's own checks.
-   ============================================================ */
+// Browser records and display lookups; PHP enforces access.
 
 window.AVIC = window.AVIC || {};
 
 AVIC.roles = {
-  claimant: { label: 'Claimant',  desk: 'Claimant workspace',  accent: '#0f6e64', home: 'dashboard.html', dir: 'claimant' },
-  adjuster: { label: 'Adjuster',  desk: 'Adjuster desk',       accent: '#2f4b9b', home: 'dashboard.html', dir: 'adjuster' },
-  garage:   { label: 'Garage',    desk: 'Garage bay',          accent: '#b4621a', home: 'dashboard.html', dir: 'garage' }
+  claimant: { label: 'Claimant', dir: 'claimant' },
+  adjuster: { label: 'Adjuster', dir: 'adjuster' },
+  garage:   { label: 'Garage', dir: 'garage' }
 };
 
-/* ---- hydrated by the API (see api.js) ---- */
 AVIC.users         = [];
 AVIC.policies      = [];
 AVIC.claims        = [];
@@ -25,12 +17,12 @@ AVIC.workOrders    = [];
 AVIC.payouts       = [];
 AVIC.notifications = [];
 AVIC.garages       = [];
+AVIC.history       = [];
 AVIC.settings      = {
   company_name: 'AVIC Insurance Co.',
   payout_currency: 'UGX',
   max_upload_mb: 10,
   claims_sla_days: 14,
-  auto_assign: 'round_robin',
   support_email: 'support@avic.ug'
 };
 
@@ -42,12 +34,10 @@ AVIC.settings      = {
 AVIC.user   = id => AVIC.users.find(u => u.id === id) || null;
 AVIC.policy = id => AVIC.policies.find(p => p.id === id) || null;
 AVIC.claim  = id => AVIC.claims.find(c => c.id === id) || null;
-AVIC.claimByNumber = n => AVIC.claims.find(c => c.claim_number === n) || null;
 AVIC.docsFor = claimId => AVIC.documents.filter(d => d.claim_id === claimId);
 AVIC.estimatesFor = claimId => AVIC.estimates.filter(e => e.claim_id === claimId);
 AVIC.payoutFor = claimId => AVIC.payouts.find(p => p.claim_id === claimId) || null;
 
-/* streamable URL for a document row (served through the PHP proxy) */
 AVIC.docUrl = function (doc) {
   return AVIC.url('config/uploads.php?doc=' + doc.id);
 };
@@ -76,7 +66,6 @@ AVIC.workOrdersFor = session =>
     ? AVIC.workOrders.filter(w => w.garage_user_id === session.id)
     : [];
 
-/* Can this session open this claim at all? Mirrors the role matrix. */
 AVIC.canSeeClaim = function (session, claim) {
   if (!session || !claim) return false;
   if (session.role === 'claimant') return claim.user_id === session.id;
@@ -85,7 +74,6 @@ AVIC.canSeeClaim = function (session, claim) {
   return false;
 };
 
-/* Fields a garage is allowed to read — vehicle and damage only. */
 AVIC.garageViewOf = function (claim) {
   const pol = AVIC.policy(claim.policy_id) || {};
   return {
@@ -118,5 +106,3 @@ AVIC.labels = {
   payout_status: { pending: 'Pending', processing: 'Processing', completed: 'Completed', failed: 'Failed' }
 };
 
-/* the claimant-facing status ladder used by the timeline */
-AVIC.statusLadder = ['draft', 'submitted', 'under_review', 'approved', 'paid'];

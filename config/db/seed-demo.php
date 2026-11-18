@@ -1,25 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Seed the demo dataset so the whole portal has something real to show.
- *
- *   php config/db/seed-demo.php
- *
- * Idempotent — safe to run again (rows are upserted by primary key). It
- * loads the schema first (config/db/schema.php), creating the work_orders
- * table and anything else a fresh database is missing, then seeds:
- *
- *   - demo users (ids 1-9) with a single shared demo password
- *   - policies, claims, documents metadata, garage estimates, work orders,
- *     payouts, notifications and the settings rows
- *
- * Demo sign-in (any account below works):
- *   email of your choice from the list   password: Demo2026!
- *
- * The legacy document rows are metadata-only (no file on disk); documents
- * uploaded through the portal are real files served from /config/uploads.php.
- */
+/* Seed the demo dataset so the whole portal has something real to show. */
 
 /* The demo data has a publicly known sign-in password. Never let it near a
    production database by accident (set AVIC_ALLOW_DEMO_SEED=1 to override). */
@@ -31,8 +13,7 @@ if (strtolower((string)getenv('AVIC_ENV')) === 'production' && getenv('AVIC_ALLO
 require_once __DIR__ . '/db_connection.php';
 require_once __DIR__ . '/schema.php';
 
-// Demo-only sign-in secret, deliberately public for the prototype (see README
-// "Demo accounts"). Point AVIC_DEMO_SECRET at your own value to protect a
+// Demo-only sign-in secret, deliberately public for local demonstrations. Point AVIC_DEMO_SECRET at your own value to protect a
 // shared demo database.
 $demoSecret = getenv('AVIC_DEMO_SECRET') ?: 'Demo2026!';
 $hash = password_hash($demoSecret, PASSWORD_DEFAULT);
@@ -219,6 +200,7 @@ function seedPayouts(PDO $conn): void
 {
     $rows = [
         [1, 102, 1, 2, 1100000, 'mobile_money', 'Ahumuza Doreen', '+256 772 114 902', null, 'PAY-20260728-00113', 'completed', '2026-07-28 10:15', '2026-07-26 09:40'],
+        [3, 108, 1, 2, 2150000, 'mobile_money', null, null, null, 'PAY-DEMO-108', 'pending', null, '2026-08-30 11:40'],
         [2, 107, 5, 2, 4800000, 'bank_transfer', 'Mugisha Alex', '01620****9', 'Stanbic Bank Uganda', 'PAY-20260906-00121', 'processing', null, '2026-09-06 15:20'],
     ];
     $stmt = $conn->prepare(
@@ -263,7 +245,6 @@ function seedSettings(PDO $conn): void
         'payout_currency' => 'UGX',
         'max_upload_mb' => '10',
         'claims_sla_days' => '14',
-        'auto_assign' => 'round_robin',
         'support_email' => 'support@avic.ug',
     ];
     $stmt = $conn->prepare('INSERT INTO settings (key_name, value) VALUES (:k, :v) ON DUPLICATE KEY UPDATE value = VALUES(value)');
@@ -305,14 +286,21 @@ function seedHistory(PDO $conn): void
 if (PHP_SAPI === 'cli') {
     echo "Seeding demo data into {$conn->query('SELECT DATABASE()')->fetchColumn()}...\n";
     seedUsers($conn, $hash);
-    seedPolicies($conn);
-    seedClaims($conn);
-    seedDocuments($conn);
-    seedEstimates($conn);
-    seedWorkOrders($conn);
-    seedPayouts($conn);
-    seedNotifications($conn);
-    seedSettings($conn);
-    seedHistory($conn);
+    if (!in_array('--accounts-only', $argv ?? [], true)) {
+        seedPolicies($conn);
+        seedClaims($conn);
+        seedDocuments($conn);
+        seedEstimates($conn);
+        seedWorkOrders($conn);
+        seedPayouts($conn);
+        seedNotifications($conn);
+        seedSettings($conn);
+        seedHistory($conn);
+    }
     echo 'Done. Any demo account signs in with password: ' . $demoSecret . "\n";
 }
+
+// These are synthetic historical demo settlements, not acceptance of new offers.
+$conn->exec('INSERT IGNORE INTO claim_settlements (claim_id, status, accepted_by, accepted_at, payment_method, account_name, account_number, bank_name)
+ SELECT claim_id, "accepted", user_id, created_at, payment_method, account_name, account_number, bank_name FROM payouts WHERE claim_id <> 108');
+$conn->exec('INSERT IGNORE INTO claim_settlements (claim_id) SELECT claim_id FROM payouts WHERE claim_id = 108');

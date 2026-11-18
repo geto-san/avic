@@ -1,19 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * GET config/uploads.php?doc=N
- *
- * The only way files are served back out. The id maps to a claim_documents
- * row, the path on disk comes from the database (never from the client),
- * and the viewer must be someone who could have seen the claim in the
- * first place — the same role matrix as the rest of the API. Files that
- * would not have been accepted on upload (non image/PDF, too large) are
- * refused here too.
- *
- * Files live in uploadDir() (outside the web root); files uploaded before that
- * move are still found in <project>/uploads/ — see uploadResolvePath().
- */
+/* GET config/uploads.php?doc=N */
 
 require_once __DIR__ . '/api/_helpers.php';
 
@@ -52,6 +40,12 @@ try {
         $allowed = (int)$doc['user_id'] === (int)$user['id'];
     } elseif ($user['role'] === 'adjuster') {
         $allowed = (int)$doc['adjuster_id'] === (int)$user['id'];
+        if (!$allowed) {
+            // Independent complaint reviewers can read evidence, never change the claim.
+            $review = $conn->prepare('SELECT id FROM claim_complaints WHERE claim_id = ? AND reviewer_id = ? LIMIT 1');
+            $review->execute([(int)$doc['claim_id'], (int)$user['id']]);
+            $allowed = (bool)$review->fetchColumn();
+        }
     } elseif ($user['role'] === 'garage') {
         $wo = $conn->prepare('SELECT id FROM work_orders WHERE claim_id = :cid AND garage_user_id = :gid LIMIT 1');
         $wo->execute(['cid' => (int)$doc['claim_id'], 'gid' => (int)$user['id']]);

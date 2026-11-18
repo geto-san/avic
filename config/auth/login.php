@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Login reading path: validate input -> check failed attempts -> verify password
+ * -> create server session -> return safe user details for browser navigation.
+ * Browser caller: assets/js/auth-login.js.
+ */
+
 require_once __DIR__ . '/../db/db_connection.php';
 require_once __DIR__ . '/../session.php';
 require_once __DIR__ . '/_helpers.php';
@@ -37,6 +43,7 @@ try {
         authJson(429, ['message' => sprintf('Too many failed attempts. Try again in %d minutes.', ATTEMPT_WINDOW_MINUTES)]);
     }
 
+    // SQL placeholders keep supplied values separate from the SQL statement.
     $find = $conn->prepare(
         'SELECT id, uuid, full_name, email, password_hash, role, status
          FROM users WHERE email = :email LIMIT 1'
@@ -59,6 +66,7 @@ try {
         authJson(403, ['message' => 'This account is ' . $user['status'] . ' and cannot sign in right now.']);
     }
 
+    // The cookie identifies this session; the password is never stored in it.
     avicSession($remember);
     session_regenerate_id(true);
     $_SESSION['user'] = [

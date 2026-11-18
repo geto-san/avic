@@ -21,6 +21,7 @@ final class TestServer
     private static ?string $base = null;
     private static string $log = '';
     private static string $uploadDir = '';
+    private static string $mailFile = '';
     private static bool $concurrent = false;
 
     public static function start(): string
@@ -33,6 +34,8 @@ final class TestServer
         self::$log = sys_get_temp_dir() . '/avic-test-server-' . getmypid() . '.log';
         @mkdir(self::$uploadDir, 0775, true);
         file_put_contents(self::$log, '');
+        self::$mailFile = sys_get_temp_dir() . '/avic-test-mail-' . getmypid() . '.txt';
+        file_put_contents(self::$mailFile, '');
 
         $probe = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
         if ($probe === false) {
@@ -45,9 +48,12 @@ final class TestServer
         $env['AVIC_UPLOAD_DIR'] = self::$uploadDir;
         $env['AVIC_ALLOW_INSECURE_COOKIES'] = '1';   // the test server is plain http
         $env['AVIC_ENV'] = 'testing';
+        $env['AVIC_PUBLIC_URL'] = "http://127.0.0.1:$port";
 
         self::$concurrent = is_executable('/usr/bin/setsid') || is_executable('/bin/setsid');
-        $command = [PHP_BINARY, '-S', "127.0.0.1:$port", '-t', $root];
+        // Capture mail locally: exercise PHP mail() without sending any email.
+        $command = [PHP_BINARY, '-d', 'sendmail_path=/bin/cat >> ' . escapeshellarg(self::$mailFile),
+            '-S', "127.0.0.1:$port", '-t', $root, $root . '/bin/serve-router.php'];
         if (self::$concurrent) {
             $env['PHP_CLI_SERVER_WORKERS'] = '4';
             array_unshift($command, 'setsid');   // own process group, so stop() can kill the workers too
@@ -94,8 +100,9 @@ final class TestServer
             @rmdir(self::$uploadDir);
         }
         if (self::$log !== '') {
-            @unlink(self::$log);
+            if (getenv('AVIC_KEEP_TEST_LOG') !== '1') @unlink(self::$log);
         }
+        if (self::$mailFile !== '') @unlink(self::$mailFile);
         self::$base = null;
     }
 
@@ -119,5 +126,11 @@ final class TestServer
     public static function log(): string
     {
         return self::$log !== '' && is_file(self::$log) ? (string)file_get_contents(self::$log) : '';
+    }
+
+    public static function resetToken(): string
+    {
+        preg_match_all('/token=([0-9a-f]{64})/', (string)file_get_contents(self::$mailFile), $matches);
+        return (string)end($matches[1]);
     }
 }

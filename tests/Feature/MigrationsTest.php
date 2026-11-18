@@ -16,7 +16,7 @@ final class MigrationsTest extends TestCase
 {
     private const TABLES = [
         'adjuster_reviews', 'audit_log', 'claim_documents', 'claim_status_history', 'claims', 'garage_estimates',
-        'login_attempts', 'notifications', 'password_resets', 'payouts', 'policies', 'settings', 'users', 'work_orders',
+        'policy_registrations', 'requested_documents', 'claim_complaints', 'claim_document_requests', 'claim_settlements', 'payout_evidence', 'login_attempts', 'notifications', 'password_resets', 'payouts', 'policies', 'settings', 'users', 'work_orders',
     ];
 
     /** @var list<string> */
@@ -60,7 +60,7 @@ final class MigrationsTest extends TestCase
     {
         $applied = migrate(TestDatabase::connect());
 
-        $this->assertSame(['0001_baseline'], $applied);
+        $this->assertSame(['0001_baseline', '0002_payout_integrity', '0003_claim_workflow', '0004_recover_pending_offers', '0005_requested_documents', '0006_policy_registrations'], $applied);
         $expected = [...self::TABLES, 'schema_migrations'];
         sort($expected);
         $this->assertSame($expected, $this->tables());
@@ -71,19 +71,20 @@ final class MigrationsTest extends TestCase
         migrate(TestDatabase::connect());
 
         $this->assertSame([], migrate(TestDatabase::connect()));
-        $this->assertSame(1, (int)TestDatabase::connect()->query('SELECT COUNT(*) FROM schema_migrations')->fetchColumn());
+        $this->assertSame(6, (int)TestDatabase::connect()->query('SELECT COUNT(*) FROM schema_migrations')->fetchColumn());
     }
 
     public function testADatabaseBuiltBeforeMigrationsExistedIsAdoptedWithoutLosingData(): void
     {
         $pdo = TestDatabase::connect();
-        migrate($pdo);
+        $baseline = $this->migrationsDirWith(['0001_baseline.sql' => (string)file_get_contents(migrationsDir() . '/0001_baseline.sql')]);
+        migrate($pdo, $baseline);
         $pdo->exec("INSERT INTO users (uuid, full_name, email, password_hash) VALUES (UUID(), 'Kept Person', 'kept@example.ug', 'x')");
         $pdo->exec('DROP TABLE schema_migrations');   // as if the ledger never existed (built by the old schema.php)
 
         $applied = migrate($pdo);
 
-        $this->assertSame(['0001_baseline'], $applied, 'recorded, harmlessly');
+        $this->assertSame(['0001_baseline', '0002_payout_integrity', '0003_claim_workflow', '0004_recover_pending_offers', '0005_requested_documents', '0006_policy_registrations'], $applied, 'recorded, harmlessly');
         $this->assertSame(1, (int)$pdo->query("SELECT COUNT(*) FROM users WHERE email = 'kept@example.ug'")->fetchColumn());
     }
 

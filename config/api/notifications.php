@@ -1,15 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * POST config/api/notifications.php
- *
- *   { "action": "read", "id": 42 }           mark one as read
- *   { "action": "read_all" }                 clear the whole inbox
- *
- * A user can only touch their own notifications — the id is always
- * checked against the session before any row is updated.
- */
+/* POST config/api/notifications.php */
 
 require_once __DIR__ . '/_helpers.php';
 

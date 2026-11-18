@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Avic\Tests\Feature;
 
+use Avic\Tests\Support\TestServer;
+
 /** Sign-in, registration, lockout, sign-out and password reset (config/auth/*). */
 final class AuthTest extends FeatureTestCase
 {
@@ -165,7 +167,8 @@ final class AuthTest extends FeatureTestCase
     {
         $client = $this->anonymous();
         $this->assertStatus(200, $client->postJson(self::FORGOT, ['email' => self::DOREEN]));
-        $token = (string)$this->value('SELECT token FROM password_resets WHERE email = ?', [self::DOREEN]);
+        $token = TestServer::resetToken();
+        $this->assertSame(hash('sha256', $token), $this->value('SELECT token FROM password_resets WHERE email = ?', [self::DOREEN]));
         $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $token);
 
         $this->assertStatus(200, $client->postJson(self::RESET, ['token' => $token, 'password' => 'BrandNew-Pass1', 'password2' => 'BrandNew-Pass1']));
@@ -179,7 +182,7 @@ final class AuthTest extends FeatureTestCase
     {
         $client = $this->anonymous();
         $client->postJson(self::FORGOT, ['email' => self::DOREEN]);
-        $first = (string)$this->value('SELECT token FROM password_resets WHERE email = ?', [self::DOREEN]);
+        $first = TestServer::resetToken();
         $client->postJson(self::FORGOT, ['email' => self::DOREEN]);
 
         $this->assertSame(1, $this->rows('password_resets', 'email = ?', [self::DOREEN]));
@@ -201,7 +204,7 @@ final class AuthTest extends FeatureTestCase
 
     public function testAnExpiredResetLinkIsRefused(): void
     {
-        $this->db()->exec("INSERT INTO password_resets (email, token, expires_at) VALUES ('" . self::DOREEN . "', '" . str_repeat('a', 64) . "', NOW() - INTERVAL 1 MINUTE)");
+        $this->db()->exec("INSERT INTO password_resets (email, token, expires_at) VALUES ('" . self::DOREEN . "', '" . hash('sha256', str_repeat('a', 64)) . "', NOW() - INTERVAL 1 MINUTE)");
 
         $response = $this->anonymous()->postJson(self::RESET, ['token' => str_repeat('a', 64), 'password' => 'BrandNew-Pass1', 'password2' => 'BrandNew-Pass1']);
 
@@ -211,7 +214,7 @@ final class AuthTest extends FeatureTestCase
 
     public function testAResetNeedsAStrongEnoughMatchingPassword(): void
     {
-        $this->db()->exec("INSERT INTO password_resets (email, token, expires_at) VALUES ('" . self::DOREEN . "', '" . str_repeat('b', 64) . "', NOW() + INTERVAL 1 HOUR)");
+        $this->db()->exec("INSERT INTO password_resets (email, token, expires_at) VALUES ('" . self::DOREEN . "', '" . hash('sha256', str_repeat('b', 64)) . "', NOW() + INTERVAL 1 HOUR)");
         $client = $this->anonymous();
 
         $this->assertStatus(422, $client->postJson(self::RESET, ['token' => str_repeat('b', 64), 'password' => 'short', 'password2' => 'short']));

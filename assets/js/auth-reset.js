@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!form) return;
 
   const token = new URLSearchParams(location.search).get('token');
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) {
+    form.closest('.panel__body').innerHTML = '<p>This reset link is incomplete. Request a new link to choose your password.</p><a class="btn btn--primary" href="forgot-password.html">Request a new reset link</a>';
+    return;
+  }
 
   const bar = document.getElementById('strength');
   form.elements.password.oninput = () => {
@@ -27,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('../../config/auth/reset-password.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': await AVIC.csrfToken() },
         body: JSON.stringify({
           token,
           password: form.elements.password.value,

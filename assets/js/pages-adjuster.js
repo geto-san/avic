@@ -1,9 +1,4 @@
-/* ============================================================
-   AVIC — adjuster desk
-   An adjuster sees only claims where adjuster_id matches their
-   own id. Claims belonging to a colleague are not listed and
-   cannot be opened by id.
-   ============================================================ */
+// Adjuster queue, claim decisions, garage assignment and payouts.
 
 const Adjuster = {};
 const OPEN_STATES = new Set(['submitted', 'under_review', 'pending_docs']);
@@ -19,7 +14,6 @@ Adjuster.dashboard = function (s) {
   document.getElementById('k-late').textContent = late.length;
   document.getElementById('k-decided').textContent = decided.length;
   document.getElementById('k-exposure').innerHTML = UI.money(open.reduce((t, c) => t + (c.estimated_damage || 0), 0));
-  document.getElementById('greeting').textContent = 'Your desk, ' + s.name.split(' ')[0];
 
   UI.bars('#mix', Object.entries(
     mine.reduce((m, c) => {
@@ -49,7 +43,7 @@ Adjuster.queue = function (s) {
     rows,
     sortKey: 'due_date', sortDir: 'asc',
     filter: c => (!st || c.status === st) && (!q || (c.claim_number + ' ' + c.incident_location).toLowerCase().includes(q)),
-    rowClass: c => (c.due_date && new Date(c.due_date) < new Date()) ? 'is-mine' : '',
+    rowClass: c => (c.due_date && new Date(c.due_date) < new Date()) ? 'is-overdue' : '',
     cols: [
       { label: 'Claim', key: 'claim_number', sortable: true, cell: c => '<a class="link mono" href="review.html?id=' + c.id + '">' + c.claim_number + '</a>' },
       { label: 'Filed by', cell: c => UI.esc(AVIC.user(c.user_id).full_name) },
@@ -65,7 +59,6 @@ Adjuster.queue = function (s) {
   });
   document.getElementById('f-q').oninput = e => { q = e.target.value.toLowerCase(); t.redraw(); };
   document.getElementById('f-status').onchange = e => { st = e.target.value; t.redraw(); };
-  document.getElementById('queue-count').textContent = rows.length + ' open ' + (rows.length === 1 ? 'claim' : 'claims');
 };
 
 Adjuster.decided = function (s) {
@@ -83,7 +76,6 @@ Adjuster.decided = function (s) {
   });
 };
 
-/* Post an approve / send-back decision, then refresh the estimates table. */
 Adjuster.postEstimateDecision = function (payload, failMsg, okMsg) {
   return API.post('config/api/estimates-decision.php', payload).then(r => {
     if (!r.ok) return UI.toast(r.data?.message || failMsg, 'bad');
@@ -140,7 +132,6 @@ Adjuster.estimates = function (s) {
   });
 };
 
-/* ---------------- review panel ---------------- */
 Adjuster.review = function (s) {
   const c = AVIC.claim(+UI.qs('id'));
   if (!AVIC.canSeeClaim(s, c)) {
@@ -152,11 +143,12 @@ Adjuster.review = function (s) {
   const docs = AVIC.docsFor(c.id);
   const est = AVIC.estimatesFor(c.id)[0];
 
-  document.getElementById('c-number').textContent = c.claim_number;
-  document.getElementById('c-sub').innerHTML = AVIC.labels.claim_type[c.claim_type] + ' · submitted ' + UI.date(c.submitted_at);
   document.getElementById('c-badge').innerHTML = UI.badge(c.status);
-  document.getElementById('c-sla').innerHTML = UI.sla(c.due_date);
+  document.getElementById('c-sla').innerHTML = DECIDED_STATES.has(c.status) ? '' : UI.sla(c.due_date);
+  UI.claimNextStep(c, 'adjuster');
+  UI.renderDocumentRequests(c);
 
+  Adjuster.renderStatusActions(c);
   Adjuster.renderFacts(c, claimant, pol);
   Adjuster.renderCoverChecks(c, pol);
   Adjuster.setupDocumentViewer(docs);
@@ -168,10 +160,27 @@ Adjuster.review = function (s) {
   UI.counters(document.getElementById('decision'));
 };
 
-/* ----- helper: facts panel ----- */
+Adjuster.renderStatusActions = function (claim) {
+  const host = document.getElementById('claim-status-actions');
+  const action = claim.status === 'submitted' ? 'start_review' : ['paid', 'rejected'].includes(claim.status) ? 'close' : null;
+  host.innerHTML = action ? '<button type="button" class="btn btn--primary" id="change-claim-status">' + (action === 'close' ? 'Close claim' : 'Start review') + '</button>' : '';
+  if (!action) return;
+  const button = document.getElementById('change-claim-status');
+  button.onclick = () => UI.confirm(button.textContent + '?',
+    action === 'close' ? 'This completes the case. It cannot be reopened.' : 'The claimant will be notified that review has started.',
+    async () => {
+      button.disabled = true;
+      const response = await API.post('config/api/claims-status.php', {claim_id: claim.id, action});
+      button.disabled = false;
+      if (!response.ok) return UI.toast(response.data?.message || 'Could not update the claim.', 'bad');
+      AVIC.rerender(Adjuster.review);
+    }, button.textContent);
+};
+
 Adjuster.renderFacts = function (c, claimant, pol) {
   document.getElementById('c-facts').innerHTML =
     '<dl class="kv">' +
+      '<dt>Claim reference</dt><dd class="mono">' + UI.esc(c.claim_number) + '</dd>' +
       '<dt>Claimant</dt><dd>' + UI.esc(claimant.full_name) + ' · ' + UI.esc(claimant.phone) + '</dd>' +
       '<dt>Policy</dt><dd class="mono">' + UI.esc(pol.policy_number) + ' · ' + UI.esc(AVIC.labels.coverage[pol.coverage_type]) + '</dd>' +
       '<dt>Cover limit</dt><dd class="mono">' + UI.money(pol.coverage_limit) + '</dd>' +
@@ -184,7 +193,6 @@ Adjuster.renderFacts = function (c, claimant, pol) {
     '</dl>';
 };
 
-/* ----- helper: cover checks ----- */
 Adjuster.renderCoverChecks = function (c, pol) {
   const checks = [];
   const inPeriod = c.incident_date >= pol.start_date && c.incident_date <= pol.end_date;
@@ -198,7 +206,6 @@ Adjuster.renderCoverChecks = function (c, pol) {
     '<div class="notif__m">' + UI.esc(k.t) + '</div></div>').join('');
 };
 
-/* ----- helper: document viewer ----- */
 Adjuster.setupDocumentViewer = function (docs) {
   let current = 0;
   function drawViewer() {
@@ -212,9 +219,9 @@ Adjuster.setupDocumentViewer = function (docs) {
         : '<iframe src="' + url + '" class="doc-frame" title="' + UI.esc(d.original_name) + '"></iframe>';
     } else {
       stage.innerHTML = d.mime_type.startsWith('image/')
-        ? '<div style="text-align:center;color:#63737f"><div style="font-size:44px">▣</div><div class="small">' + UI.esc(d.original_name) + '</div>' +
+        ? '<div class="viewer-placeholder"><div>▣</div><div class="small">' + UI.esc(d.original_name) + '</div>' +
           '<div class="tiny">Seeded document — uploaded files preview here instead</div></div>'
-        : '<div style="text-align:center;color:#63737f"><div style="font-size:44px">▤</div><div class="small">' + UI.esc(d.original_name) + '</div>' +
+        : '<div class="viewer-placeholder"><div>▤</div><div class="small">' + UI.esc(d.original_name) + '</div>' +
           '<div class="tiny">Seeded document</div></div>';
     }
     document.getElementById('v-name').textContent = d.original_name + ' · ' + UI.size(d.file_size);
@@ -242,7 +249,6 @@ Adjuster.setupDocumentViewer = function (docs) {
   drawDocs(); drawViewer();
 };
 
-/* ----- helper: estimate panel ----- */
 Adjuster.renderEstimatePanel = function (c, est) {
   const wo = AVIC.workOrders?.find(w => w.claim_id === c.id);
   let estHtml;
@@ -267,7 +273,6 @@ Adjuster.renderEstimatePanel = function (c, est) {
   document.getElementById('c-estimate').innerHTML = estHtml;
 };
 
-/* ----- helper: payout panel ----- */
 Adjuster.renderPayoutPanel = function (c) {
   const pay = AVIC.payoutFor(c.id);
   const payHost = document.getElementById('c-payout');
@@ -275,7 +280,8 @@ Adjuster.renderPayoutPanel = function (c) {
     const mine = (+pay.approved_by) === (+AVIC.session().id);
     const adv = pay.status === 'pending' ? 'mark_processing' : 'mark_paid';
     const advanceBtn = pay.status === 'pending' ? 'Mark processing' : 'Mark paid';
-    const payoutActions = mine
+    const accepted = AVIC.settlements.find(offer => +offer.claim_id === c.id)?.status === 'accepted';
+    const payoutActions = !accepted ? '<p class="muted">Waiting for the claimant to accept the offer and confirm payment details.</p>' : mine
       ? '<div class="btnrow"><button class="btn btn--sm btn--primary" id="p-advance">' + advanceBtn + '</button></div>'
       : '<p class="muted small">Only the adjuster who approved this claim can advance the payout.</p>';
     payHost.innerHTML =
@@ -285,16 +291,21 @@ Adjuster.renderPayoutPanel = function (c) {
       '<dt>Status</dt><dd>' + UI.badge(pay.status, AVIC.labels.payout_status) + '</dd></dl>' +
       payoutActions;
     const pa = document.getElementById('p-advance');
-    if (pa) pa.onclick = () => UI.confirm(
-      pay.status === 'pending' ? 'Start processing this payout?' : 'Mark this payout as paid?',
-      'Advancing it is written to the audit log and the claimant is notified.',
-      () => API.post('config/api/payouts-update.php', {
-        payout_id: pay.id, action: adv
+    if (pa) pa.onclick = () => UI.modal({
+      title: pay.status === 'pending' ? 'Start processing this payout?' : 'Record completed payment',
+      body: pay.status === 'pending' ? '<p>The claimant has accepted the settlement. Confirm that payment processing has started.</p>' :
+        '<p>Record an actual payment, checked outside this demonstration system.</p><form>' +
+        '<div class="field"><label for="external-reference">External transaction reference</label><input type="text" id="external-reference" name="external_reference" maxlength="120" required></div>' +
+        '<div class="field"><label for="payment-note">Verification record</label><textarea id="payment-note" name="verification_note" maxlength="2000" placeholder="Provider, receipt details and how you checked payment" required></textarea></div>' +
+        '<label class="check"><input type="checkbox" name="payment_confirmed" required> I checked this payment against an external payment record.</label></form>',
+      confirm: 'Advance payout',
+      onConfirm: data => API.post('config/api/payouts-update.php', {
+        payout_id: pay.id, action: adv, ...data, payment_confirmed: data.payment_confirmed === 'on'
       }).then(r => {
-        if (!r.ok) return UI.toast((r.data?.message) || 'Could not advance the payout.', 'bad');
-        UI.toast('Payout advanced.', 'ok');
-        AVIC.rerender(Adjuster.review);
-      }), 'Advance payout');
+        if (!r.ok) { UI.toast(r.data?.message || 'Could not advance the payout.', 'bad'); return false; }
+        UI.toast('Payout advanced.', 'ok'); AVIC.rerender(Adjuster.review);
+      })
+    });
   } else if (pay) {
     payHost.innerHTML =
       '<dl class="kv"><dt>Reference</dt><dd class="mono">' + UI.esc(pay.reference_number) + '</dd>' +
@@ -304,9 +315,9 @@ Adjuster.renderPayoutPanel = function (c) {
   } else {
     payHost.innerHTML = '<p class="muted small">A payout is created when a claim is approved.</p>';
   }
+  UI.renderPaymentEvidence(payHost, pay);
 };
 
-/* ----- helper: garage assignment ----- */
 Adjuster.setupGarageAssignment = function (c) {
   const doAssign = document.getElementById('do-assign');
   if (doAssign) doAssign.onclick = () => {
@@ -320,7 +331,6 @@ Adjuster.setupGarageAssignment = function (c) {
   };
 };
 
-/* ----- helper: decision form ----- */
 Adjuster.setupDecisionForm = function (c, est, pol) {
   const form = document.getElementById('decision');
 
@@ -331,10 +341,35 @@ Adjuster.setupDecisionForm = function (c, est, pol) {
     form.innerHTML = '<p class="muted small">This claim is ' + UI.esc(state) + ', so no further decision can be recorded on it.</p>';
     return;
   }
-  /* already waiting on the claimant: asking again would change nothing */
+
   const askAgain = form.querySelector('.choice[data-decision="request_docs"]');
   if (askAgain && c.status === 'pending_docs') askAgain.classList.add('hidden');
 
+  const requestFields = document.getElementById('document-request-fields');
+  document.getElementById('document-request-rows').innerHTML = '';
+  let nextDocument = 0;
+  function addDocumentChoice() {
+    const rows = document.getElementById('document-request-rows');
+    if (rows.children.length >= 8) return UI.toast('Request up to eight documents at a time.', 'bad');
+    const id = ++nextDocument;
+    rows.insertAdjacentHTML('beforeend', '<div class="request-choice" data-document-row><div class="field"><label for="document-type-' + id + '">Document ' + id + '</label>' +
+      '<select id="document-type-' + id + '">' + Object.entries(AVIC.labels.doc_type).map(([value, label]) => '<option value="' + value + '">' + UI.esc(label) + '</option>').join('') + '</select></div>' +
+      '<div class="field" data-custom-name hidden><label for="document-name-' + id + '">Document name</label><input type="text" id="document-name-' + id + '" maxlength="150"></div>' +
+      '<button class="btn" type="button" data-remove-document aria-label="Remove document ' + id + '">Remove</button></div>');
+    const row = rows.lastElementChild;
+    row.querySelector('select').onchange = () => {
+      const custom = row.querySelector('select').value === 'other';
+      row.querySelector('[data-custom-name]').hidden = !custom;
+      row.querySelector('input').required = custom;
+    };
+    row.querySelector('[data-remove-document]').onclick = () => {
+      if (rows.children.length === 1) return UI.toast('Keep at least one requested document.', 'bad');
+      row.remove(); document.getElementById('add-document-request').focus();
+    };
+  }
+  document.getElementById('add-document-request').onclick = addDocumentChoice;
+  addDocumentChoice();
+  requestFields.querySelectorAll('input,select').forEach(input => input.disabled = true);
   const amount = form.elements.recommended_amount;
   if (est) amount.value = est.total_estimate;
   document.getElementById('limit-note').innerHTML =
@@ -347,10 +382,18 @@ Adjuster.setupDecisionForm = function (c, est, pol) {
   };
 
   document.querySelectorAll('.choice[data-decision]').forEach(ch => ch.onclick = () => {
-    document.querySelectorAll('.choice[data-decision]').forEach(x => x.classList.remove('is-on'));
-    ch.classList.add('is-on');
+    document.querySelectorAll('.choice[data-decision]').forEach(x => { x.classList.remove('is-on'); x.setAttribute('aria-pressed', 'false'); });
+    ch.classList.add('is-on'); ch.setAttribute('aria-pressed', 'true');
     form.elements.decision.value = ch.dataset.decision;
     const needsAmount = ch.dataset.decision === 'approve';
+    const requesting = ch.dataset.decision === 'request_docs';
+    requestFields.hidden = !requesting;
+    requestFields.querySelectorAll('input,select').forEach(input => input.disabled = !requesting);
+    form.elements.review_notes.required = ch.dataset.decision === 'reject';
+    form.elements.review_notes.placeholder = ch.dataset.decision === 'request_docs'
+      ? 'Optional instructions for the selected documents. These instructions are shown to the claimant.'
+      : ch.dataset.decision === 'reject' ? 'Explain the rejection clearly. This reason is shown to the claimant.'
+        : 'Record the evidence checked and how you reached the approved amount.';
     document.getElementById('amount-field').classList.toggle('hidden', !needsAmount);
   });
 
@@ -359,6 +402,7 @@ Adjuster.setupDecisionForm = function (c, est, pol) {
     if (!form.elements.decision.value) return UI.toast('Choose a decision first.', 'bad');
     if (form.elements.decision.value === 'approve' && +amount.value > pol.coverage_limit)
       return UI.toast('The approved amount cannot exceed the cover limit.', 'bad');
+    if (form.elements.decision.value === 'reject' && !form.elements.review_notes.value.trim()) return UI.toast('Enter a clear reason or list the exact documents required, one per line.', 'bad');
     const words = { approve: 'Approve this claim?', reject: 'Reject this claim?', request_docs: 'Ask for more documents?' };
     UI.confirm(words[form.elements.decision.value], 'The claimant is notified straight away and the decision is written to the audit log.',
       () => {
@@ -366,6 +410,7 @@ Adjuster.setupDecisionForm = function (c, est, pol) {
           claim_id: c.id,
           decision: form.elements.decision.value,
           amount: form.elements.decision.value === 'approve' ? +amount.value : null,
+          documents: form.elements.decision.value === 'request_docs' ? [...requestFields.querySelectorAll('[data-document-row]')].map(row => ({document_type:row.querySelector('select').value, document_name:row.querySelector('input').value})) : [],
           review_notes: form.elements.review_notes.value
         }).then(r => {
           if (!r.ok) return UI.toast((r.data?.message) || 'Could not record the decision.', 'bad');
@@ -376,7 +421,7 @@ Adjuster.setupDecisionForm = function (c, est, pol) {
   };
 };
 
-AVIC.boot(function (s) {
+if (document.body.dataset.page !== 'policy-issue') AVIC.boot(function (s) {
   ({
     dashboard: Adjuster.dashboard,
     queue: Adjuster.queue,

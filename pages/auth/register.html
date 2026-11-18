@@ -15,11 +15,8 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Create an account · AVIC">
 <meta name="twitter:description" content="Create an AVIC account to file and track auto insurance claims, or to work claims as an adjuster or garage.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/css/avic.css">
-<script src="../../assets/js/mock-data.js" defer></script>
+<script src="../../assets/js/data-store.js" defer></script>
 <script src="../../assets/js/session.js" defer></script>
 <script src="../../assets/js/ui.js" defer></script>
 <script src="../../assets/js/auth-register.js" defer></script>
@@ -58,8 +55,8 @@
               <label for="role">What are you signing up as?</label>
               <input type="hidden" name="role" id="role">
               <div class="choices">
-                <div class="choice" data-role="claimant"><div class="choice__t">Claimant</div><div class="choice__d">I hold a policy</div></div>
-                <div class="choice" data-role="garage"><div class="choice__t">Garage</div><div class="choice__d">I repair vehicles</div></div>
+                <button type="button" class="choice" aria-pressed="false" data-role="claimant"><span class="choice__t">Claimant</span><span class="choice__d">I hold a policy</span></button>
+                <button type="button" class="choice" aria-pressed="false" data-role="garage"><span class="choice__t">Garage</span><span class="choice__d">I repair vehicles</span></button>
               </div>
             </div>
             <div class="field"><label for="full_name">Full name or workshop name</label>

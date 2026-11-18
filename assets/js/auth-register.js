@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.choice[data-role]').forEach(ch => {
     ch.addEventListener('click', () => {
-      document.querySelectorAll('.choice[data-role]').forEach(x => x.classList.remove('is-on'));
-      ch.classList.add('is-on');
+      document.querySelectorAll('.choice[data-role]').forEach(x => { x.classList.remove('is-on'); x.setAttribute('aria-pressed', 'false'); });
+      ch.classList.add('is-on'); ch.setAttribute('aria-pressed', 'true');
       roleInput.value = ch.dataset.role;
       garageFields.classList.toggle('hidden', ch.dataset.role !== 'garage');
     });
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     if (!UI.validate(form)) return UI.toast('Fill in the highlighted fields.', 'bad');
     if (!roleInput.value) return UI.toast('Choose whether you are a claimant or a garage.', 'bad');
     if (form.elements.password.value.length < 8) {
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('../../config/auth/register.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': await AVIC.csrfToken() },
         body: JSON.stringify(payload),
       });
       const data = await res.json();

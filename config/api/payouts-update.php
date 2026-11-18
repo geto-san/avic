@@ -1,20 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * POST config/api/payouts-update.php
- *
- * Move a payout forward on its lifecycle: pending -> processing -> completed.
- * Only the adjuster who approved the claim (approved_by) may do this, and only
- * one step at a time — you cannot skip to completed or move a payout backwards.
- * Reaching "completed" also lands the underlying claim at "paid" so the case
- * leaves the pending sink for good. Every transition is written to the status
- * history, the audit log and the claimant's notification feed.
- *
- * One transaction under a row lock on the payout (and its claim): two clicks
- * or two tabs cannot both advance the same step, and nothing is half-written.
- * The claim must still be "approved" (claim-state.php) for its payout to move.
- */
+/* POST config/api/payouts-update.php */
 
 require_once __DIR__ . '/_helpers.php';
 
@@ -39,7 +26,7 @@ if (!in_array($action, ['mark_processing', 'mark_paid'], true)) {
 }
 
 try {
-    $result = inTransaction($conn, static fn() => advancePayout($conn, $user, $payoutId, $action));
+    $result = inTransaction($conn, static fn() => advancePayout($conn, $user, $payoutId, $action, $input));
     apiJson(200, ['ok' => true] + $result);
 } catch (PDOException $e) {
     error_log($e->getMessage());
@@ -51,18 +38,20 @@ try {
  *
  * @return array{status:string, processed_at:string}
  */
-function advancePayout(PDO $conn, array $user, int $payoutId, string $action): array
+function advancePayout(PDO $conn, array $user, int $payoutId, string $action, array $input): array
 {
-    $sel = $conn->prepare(
-        'SELECT p.*, c.claim_number, c.status AS claim_status
-         FROM payouts p JOIN claims c ON c.id = p.claim_id
-         WHERE p.id = :id LIMIT 1 FOR UPDATE'
-    );
-    $sel->execute(['id' => $payoutId]);
+    // Read and lock before deciding: another request may have advanced this payout.
+    // Use the same claim -> policy lock order as approval and submission.
+    $lookup = $conn->prepare('SELECT claim_id FROM payouts WHERE id = ?');
+    $lookup->execute([$payoutId]);
+    $claimId = (int)$lookup->fetchColumn();
+    if (!$claimId) throw new ApiAbort('That payout does not exist.', 404);
+    $claim = claimLock($conn, $claimId);
+    $sel = $conn->prepare('SELECT * FROM payouts WHERE id = ? FOR UPDATE');
+    $sel->execute([$payoutId]);
     $payout = $sel->fetch();
-    if (!$payout) {
-        throw new ApiAbort('That payout does not exist.', 404);
-    }
+    $payout['claim_status'] = $claim['status'];
+    $payout['claim_number'] = $claim['claim_number'];
 
     /* fail closed: only the adjuster who approved can advance the payout */
     if ((int)$payout['approved_by'] !== (int)$user['id']) {
@@ -73,7 +62,8 @@ function advancePayout(PDO $conn, array $user, int $payoutId, string $action): a
     claimAssertMove((string)$payout['claim_status'], 'paid',
         'This claim is ' . claimStatusWords((string)$payout['claim_status']) . ', so its payout cannot move forward.');
 
-    /* single-step forward state machine only */
+    /* Each action has one permitted starting state and one destination.
+       These are payout states, separate from the claim's status. */
     $from = $payout['status'];
     $targets = [
         'mark_processing' => ['pending' => 'processing'],
@@ -91,6 +81,28 @@ function advancePayout(PDO $conn, array $user, int $payoutId, string $action): a
     }
     $to = $targets[$action][$from];
 
+    assertPolicyCoverage($conn, $claim, (float)$payout['amount']);
+
+    assertNoOpenComplaint($conn, $claimId);
+    $offer = $conn->prepare('SELECT status FROM claim_settlements WHERE claim_id = ?');
+    $offer->execute([$claimId]);
+    if ($offer->fetchColumn() !== 'accepted') throw new ApiAbort('The claimant must accept the settlement and confirm payment details first.', 409);
+    if ($to === 'completed') {
+        $reference = workflowText($input['external_reference'] ?? '', 'the external payment transaction reference', 120);
+        $note = workflowText($input['verification_note'] ?? '', 'how the payment was verified');
+        if (($input['payment_confirmed'] ?? false) !== true) throw new ApiAbort('Confirm that payment was checked against the external payment record.', 422);
+        $check = $conn->prepare('SELECT payout_id FROM payout_evidence WHERE external_reference = ? OR payout_id = ?');
+        $check->execute([$reference, $payoutId]);
+        if ($check->fetchColumn()) throw new ApiAbort('This payment reference or evidence record has already been used.', 409);
+        try {
+            $conn->prepare('INSERT INTO payout_evidence (payout_id, external_reference, verification_note, confirmed_by) VALUES (?, ?, ?, ?)')
+                ->execute([$payoutId, $reference, $note, $user['id']]);
+        } catch (PDOException $error) {
+            if ($error->getCode() === '23000') throw new ApiAbort('That transaction reference has already been recorded.', 409);
+            throw $error;
+        }
+    }
+
     /* payouts has no updated_at column (the old query named one and failed on a
        database built from schema.php); processed_at is the timestamp we keep */
     $conn->prepare('UPDATE payouts SET status = :to, processed_at = NOW() WHERE id = :id')
@@ -102,8 +114,8 @@ function advancePayout(PDO $conn, array $user, int $payoutId, string $action): a
     )->execute([
         'cid' => (int)$payout['claim_id'],
         'by'  => (int)$user['id'],
-        'from' => $from,
-        'to'   => $to,
+        'from' => $claim['status'],
+        'to'   => $to === 'completed' ? 'paid' : $claim['status'],
         'notes' => 'Payout ' . $payout['reference_number'] . ': ' . $from . ' -> ' . $to,
     ]);
 
@@ -115,14 +127,14 @@ function advancePayout(PDO $conn, array $user, int $payoutId, string $action): a
         'completed'  => 'Payout completed',
     ];
     $messages = [
-        'processing' => 'AVIC has started processing the ' . number_format((float)$payout['amount']) . ' UGX payout for ' . $payout['claim_number'] . '. It usually lands within 2 working days.',
+        'processing' => 'AVIC has marked the ' . number_format((float)$payout['amount']) . ' UGX payout for ' . $payout['claim_number'] . ' as processing.',
         'completed'  => 'The ' . number_format((float)$payout['amount']) . ' UGX payout for ' . $payout['claim_number'] . ' has been completed. Check ' . $payout['payment_method'] . ' for reference ' . $payout['reference_number'] . '.',
     ];
     notify($conn, (int)$payout['user_id'], (int)$payout['claim_id'], 'payout',
            $titles[$to], $messages[$to]);
 
     if ($to === 'completed') {
-        $conn->prepare('UPDATE claims SET status = "paid", updated_at = NOW() WHERE id = :id')
+        $conn->prepare('UPDATE claims SET status = "paid", resolved_at = NOW(), updated_at = NOW() WHERE id = :id')
              ->execute(['id' => (int)$payout['claim_id']]);
     }
 

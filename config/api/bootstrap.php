@@ -1,25 +1,13 @@
 <?php
 declare(strict_types=1);
 
-/**
- * GET config/api/bootstrap.php
- *
- * One request that hydrates the front-end AVIC.* data layer for the
- * signed-in user. The role decides the shape of the response:
- *
- *   - claimant: their policies, claims, documents, estimates, payouts, notifications
- *   - adjuster: their claims + the claimant identities, policies, docs, estimates,
- *               work orders on those claims, garages to assign, notifications
- *   - garage:   only the vehicle/damage projection of the claims it holds a
- *               work order for, its own estimates and notifications — never the
- *               claimant's identity or payout figures
- *
- * The front end stores nothing of its own: if this call fails, the app has no
- * data to render and redirects to sign-in (this is what closes the
- * client-only-guard gap).
- */
+/* GET config/api/bootstrap.php */
 
 require_once __DIR__ . '/_helpers.php';
+
+// This is the read endpoint used when a signed-in page opens or refreshes.
+// Follow: session -> role-specific SELECT queries -> browser-friendly JSON.
+// The browser copies the response into assets/js/data-store.js using api.js.
 
 const NOTIF_BY_USER_SQL = 'SELECT * FROM notifications WHERE user_id = ';
 const ORDER_CREATED_DESC = ' ORDER BY created_at DESC';
@@ -49,6 +37,11 @@ try {
         'workOrders'    => [],
         'notifications' => [],
         'payouts'       => [],
+        'history'      => [],
+        'documentRequests' => [],
+        'requestedDocuments' => [],
+        'settlements' => [],
+        'paymentEvidence' => [],
         'settings'      => $settings,
     ];
 
@@ -89,6 +82,7 @@ try {
         $payload['documents']= array_map('rowDoc', fetchRows($conn, "SELECT * FROM claim_documents WHERE claim_id IN ($inIds) ORDER BY uploaded_at"));
         $payload['estimates']= fetchRows($conn, "SELECT * FROM garage_estimates WHERE claim_id IN ($inIds) ORDER BY created_at");
         $payload['workOrders'] = fetchRows($conn, "SELECT * FROM work_orders WHERE claim_id IN ($inIds) ORDER BY assigned_at DESC");
+        $payload['payouts'] = fetchRows($conn, "SELECT * FROM payouts WHERE claim_id IN ($inIds)");
         $payload['notifications'] = fetchRows($conn, NOTIF_BY_USER_SQL . $id . ORDER_CREATED_DESC);
 
         $vignettes = [meRow($user)];
@@ -125,6 +119,15 @@ try {
         $payload['users']      = [meRow($user)];
     }
 
+    // Only the owner and assigned adjuster receive the claim's progress history.
+    if ($user['role'] !== 'garage') {
+        $payload['requestedDocuments'] = fetchRows($conn, "SELECT d.*, r.claim_id FROM requested_documents d JOIN claim_document_requests r ON r.id = d.request_id WHERE r.claim_id IN ($inIds) ORDER BY d.id");
+        $payload['documentRequests'] = fetchRows($conn, "SELECT * FROM claim_document_requests WHERE claim_id IN ($inIds) ORDER BY id DESC");
+        $payload['settlements'] = fetchRows($conn, "SELECT * FROM claim_settlements WHERE claim_id IN ($inIds)");
+        $payload['paymentEvidence'] = fetchRows($conn, "SELECT e.* FROM payout_evidence e JOIN payouts p ON p.id = e.payout_id WHERE p.claim_id IN ($inIds)");
+        $payload['history'] = fetchRows($conn, "SELECT claim_id, from_status, to_status, changed_at
+            FROM claim_status_history WHERE claim_id IN ($inIds) ORDER BY changed_at, id");
+    }
     apiJson(200, $payload);
 
 } catch (PDOException $e) {
@@ -164,6 +167,7 @@ function rowClaim(array $c, int $slaDays): array
         'reviewed_at'         => $c['reviewed_at'],
         'resolved_at'         => $c['resolved_at'],
         'created_at'          => $c['created_at'],
+        'updated_at'          => $c['updated_at'],
         'due_date'            => $c['submitted_at'] ? claimDue($c['submitted_at'], $slaDays) : null,
     ];
 }
@@ -184,7 +188,7 @@ function rowDoc(array $d): array
         'original_name'=> $d['original_name'],
         'file_size'    => num($d['file_size']),
         'mime_type'    => $d['mime_type'],
-        'is_verified'  => cnt($d['is_verified']),
+        'is_verified'  => (int)$d['is_verified'],
         'verified_by'  => $d['verified_by'] ? (int)$d['verified_by'] : null,
         'verified_at'  => $d['verified_at'],
         'uploaded_at'  => $d['uploaded_at'],

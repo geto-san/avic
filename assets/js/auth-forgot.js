@@ -11,11 +11,15 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.textContent = 'Sending…';
 
     try {
-      await fetch('../../config/auth/forgot-password.php', {
+      const response = await fetch('../../config/auth/forgot-password.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': await AVIC.csrfToken() },
         body: JSON.stringify({ email: form.elements.email.value.trim() }),
       });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return UI.toast(error.message || 'Could not request a reset. Try again.', 'bad');
+      }
       // Always show the same "check your email" screen. The server
       // deliberately never reports whether the address was found, so the
       // client can't (and shouldn't try to) branch on that either.

@@ -26,10 +26,12 @@ final class TestDatabase
             getenv('AVIC_DB_NAME')
         );
         try {
-            return self::$pdo = new PDO($dsn, (string)getenv('AVIC_DB_USER'), (string)getenv('AVIC_DB_PASS'), [
+            self::$pdo = new PDO($dsn, (string)getenv('AVIC_DB_USER'), (string)getenv('AVIC_DB_PASS'), [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
+            self::$pdo->exec("SET time_zone = '+00:00'");
+            return self::$pdo;
         } catch (PDOException $e) {
             throw new RuntimeException(
                 "Cannot reach the test database \"" . getenv('AVIC_DB_NAME') . "\": " . $e->getMessage() . "\n" .

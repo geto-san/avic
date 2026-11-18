@@ -6,7 +6,9 @@ declare(strict_types=1);
  * Mirrors config/api/_helpers.php so both API layers follow the same shape.
  */
 
+require_once __DIR__ . '/../csrf.php';
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
 
 function authJson(int $code, array $payload): void
 {
@@ -24,6 +26,7 @@ function authRequirePostJson(): array
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         authJson(405, ['message' => 'Method not allowed']);
     }
+    requireCsrf();
     $input = json_decode(file_get_contents('php://input'), true);
     if (!is_array($input)) {
         authJson(400, ['message' => 'Invalid request body']);

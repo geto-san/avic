@@ -93,7 +93,7 @@ final class ClaimLifecycleTest extends FeatureTestCase
 
         $this->assertStatus(200, $response);
         $id = (int)$response->json()['id'];
-        $this->assertMatchesRegularExpression('/^CLM-\d{4}-\d{5}$/', (string)$response->json()['claim_number']);
+        $this->assertMatchesRegularExpression('/^CLM-\d{4}-[A-F0-9]{16}$/', (string)$response->json()['claim_number']);
         $this->assertSame('submitted', $this->claimStatus($id));
         $this->assertNotNull($this->value('SELECT adjuster_id FROM claims WHERE id = ?', [$id]));
     }

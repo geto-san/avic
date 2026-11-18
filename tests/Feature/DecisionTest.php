@@ -60,11 +60,12 @@ final class DecisionTest extends FeatureTestCase
         ];
     }
 
-    public function testApprovingAnApprovedClaimCreatesNoPayout(): void
+    public function testApprovingAnApprovedClaimCreatesNoExtraPayout(): void
     {
         $this->signIn(self::BRIAN)->postJson(self::DECIDE, $this->approve(108));
 
-        $this->assertSame(0, $this->rows('payouts', 'claim_id = 108'));
+        $this->assertSame(1, $this->rows('payouts', 'claim_id = 108'));
+        $this->assertSame('pending', $this->value('SELECT status FROM claim_settlements WHERE claim_id = 108'));
     }
 
     public function testRejectionRecordsTheReasonAndOpensNoPayout(): void
@@ -129,7 +130,8 @@ final class DecisionTest extends FeatureTestCase
 
     public function testTheBasicTierDoesNotCoverTheft(): void
     {
-        $this->db()->exec("UPDATE claims SET policy_id = 4, claim_type = 'theft' WHERE id = 105");
+        $this->db()->exec("UPDATE policies SET coverage_type = 'basic' WHERE id = 3");
+        $this->db()->exec("UPDATE claims SET claim_type = 'theft' WHERE id = 105");
 
         $response = $this->signIn(self::GRACE)->postJson(self::DECIDE, $this->approve(105, 1000000));
 
@@ -183,6 +185,7 @@ final class DecisionTest extends FeatureTestCase
         $devices = [$this->signIn(self::GRACE), $this->signIn(self::GRACE), $this->signIn(self::GRACE)];
 
         for ($round = 1; $round <= 8; $round++) {
+            $this->db()->exec('DELETE FROM claim_settlements WHERE claim_id = 105');
             $this->db()->exec("UPDATE claims SET status = 'submitted', approved_amount = NULL WHERE id = 105");
             $this->db()->exec('DELETE FROM payouts WHERE claim_id = 105');
 

@@ -1,22 +1,18 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Shared plumbing for the AVIC write API.
- *
- * Every endpoint under config/api/ starts by requiring this file, which
- * boots the session, provides JSON helpers, and checks that the caller is
- * really the person the front-end claims to be. The `sessionStorage`
- * mirror on the client is only a convenience — authorization happens here,
- * on the server, against $_SESSION['user'].
- */
+/* Shared plumbing for the AVIC write API. */
 
 require_once __DIR__ . '/../db/db_connection.php';
 require_once __DIR__ . '/../session.php';
+require_once __DIR__ . '/../csrf.php';
 require_once __DIR__ . '/claim-state.php';
+require_once __DIR__ . '/policy-rules.php';
+require_once __DIR__ . '/workflow-rules.php';
 require_once __DIR__ . '/upload-files.php';
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
 
 function apiJson(int $code, array $payload): void
 {
@@ -39,6 +35,9 @@ function apiUser(array $roles = []): array
     if ($roles && !in_array($u['role'], $roles, true)) {
         apiJson(403, ['message' => 'Forbidden for this role.']);
     }
+    if (!in_array($_SERVER['REQUEST_METHOD'] ?? '', ['GET', 'HEAD'], true)) {
+        requireCsrf();
+    }
     return $u;
 }
 
@@ -48,11 +47,6 @@ function num($v): ?float
     return $v === null || $v === '' ? null : (float)$v;
 }
 
-/** A number that is always a number (counts, percentages). */
-function cnt($v): int
-{
-    return (int)($v ?? 0);
-}
 
 /** Claimant/SLA deadline = submitted_at + SLA days. */
 function claimDue(string $submittedAt, int $slaDays): ?string
@@ -72,7 +66,6 @@ function apiSettings(PDO $conn): array
         'payout_currency' => 'UGX',
         'max_upload_mb'   => 10,
         'claims_sla_days' => 14,
-        'auto_assign'     => 'round_robin',
         'support_email'   => 'support@avic.ug',
     ];
     foreach ($rows as $r) {

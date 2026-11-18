@@ -32,12 +32,12 @@ final class ApiClient
     }
 
     /** @param array<string,mixed> $data */
-    public function postJson(string $path, array $data): Response
+    public function postJson(string $path, array $data, ?string $csrf = null): Response
     {
         return $this->send($path, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($data, JSON_THROW_ON_ERROR),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'X-CSRF-Token: ' . ($csrf ?? $this->csrfToken())],
         ]);
     }
 
@@ -47,13 +47,19 @@ final class ApiClient
      * @param array<string,scalar>                                        $fields
      * @param list<array{path:string,type:string,name:string}>            $files
      */
-    public function postMultipart(string $path, array $fields, array $files = []): Response
+    public function postMultipart(string $path, array $fields, array $files = [], ?string $csrf = null): Response
     {
         $post = $fields;
         foreach ($files as $i => $file) {
             $post["files[$i]"] = new CURLFile($file['path'], $file['type'], $file['name']);
         }
-        return $this->send($path, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $post]);
+        return $this->send($path, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $post,
+            CURLOPT_HTTPHEADER => ['X-CSRF-Token: ' . ($csrf ?? $this->csrfToken())]]);
+    }
+
+    public function csrfToken(): string
+    {
+        return (string)$this->get('config/auth/session-token.php')->json()['csrf_token'];
     }
 
     /**
@@ -67,7 +73,7 @@ final class ApiClient
      * @param array<string,mixed> $data
      * @return list<Response> in the same order as $clients
      */
-    public static function postJsonTogether(array $clients, string $path, array $data): array
+    public static function postJsonTogether(array $clients, string $path, array $data, array $payloads = []): array
     {
         $multi = curl_multi_init();
         $handles = [];
@@ -79,8 +85,8 @@ final class ApiClient
                 CURLOPT_COOKIEFILE => $client->jar,   // read-only: no handle writes the jar
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => json_encode($data, JSON_THROW_ON_ERROR),
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                CURLOPT_POSTFIELDS => json_encode($payloads[$i] ?? $data, JSON_THROW_ON_ERROR),
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'X-CSRF-Token: ' . $client->csrfToken()],
                 CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$headers, $i): int {
                     $parts = explode(':', $line, 2);
                     if (count($parts) === 2) {
@@ -103,9 +109,9 @@ final class ApiClient
         foreach ($handles as $i => $curl) {
             $responses[] = new Response((int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE), (string)curl_multi_getcontent($curl), $headers[$i]);
             curl_multi_remove_handle($multi, $curl);
-            curl_close($curl);
+            unset($curl);
         }
-        curl_multi_close($multi);
+        unset($multi);
         return $responses;
     }
 
@@ -133,11 +139,11 @@ final class ApiClient
         $body = curl_exec($curl);
         if ($body === false) {
             $error = curl_error($curl);
-            curl_close($curl);
+            unset($curl);
             throw new RuntimeException('HTTP request failed: ' . $error . "\n" . TestServer::log());
         }
         $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-        curl_close($curl);
+        unset($curl);
         return new Response($status, (string)$body, $headers);
     }
 }

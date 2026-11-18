@@ -1,25 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * The one place that says how a claim's status may change.
- *
- * Every endpoint that moves a claim (claimant submit/edit, adjuster decision,
- * payout completion) asks this file first, inside a transaction, after taking
- * a row lock on the claim. That makes two things true that were not before:
- *
- *   - a claim can only follow the lifecycle below (an approved or paid claim
- *     can no longer be pushed back to "draft" or "submitted");
- *   - two requests racing for the same claim cannot both win (the second one
- *     waits on the lock, then sees the new status and is refused with a 409).
- *
- *   draft ──> submitted ──> under_review ──> approved ──> paid ──> closed
- *                │  ▲            │              │
- *                │  └─ pending_docs <──┘         └ (payout completes)
- *                └──> rejected ──> closed
- *
- * "under_review" is part of the lifecycle but nothing sets it yet (Phase 2).
- */
+/* The one place that says how a claim's status may change. */
 
 const CLAIM_TRANSITIONS = [
     'draft'        => ['draft', 'submitted'],              // save, or submit
@@ -50,6 +32,7 @@ final class ApiAbort extends RuntimeException
 
 function claimCanMove(string $from, string $to): bool
 {
+    // Look up the allowed destinations for this starting state, then test membership.
     return in_array($to, CLAIM_TRANSITIONS[$from] ?? [], true);
 }
 
@@ -92,6 +75,8 @@ function claimLock(PDO $conn, int $claimId): array
  */
 function inTransaction(PDO $conn, callable $fn)
 {
+    // $fn is the operation supplied by the endpoint (for example recordDecision).
+    // Commit means keep all its database writes; rollback means discard them.
     $conn->beginTransaction();
     try {
         $result = $fn();
@@ -103,6 +88,9 @@ function inTransaction(PDO $conn, callable $fn)
     } catch (Throwable $e) {
         if ($conn->inTransaction()) {
             $conn->rollBack();
+        }
+        if ($e instanceof PDOException && ($e->getCode() === '40001' || in_array($e->errorInfo[1] ?? 0, [1020, 1205, 1213], true))) {
+            apiJson(409, ['message' => 'Another request changed this record. Reload and try again.']);
         }
         throw $e;
     }

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<title>Claimant notifications · AVIC</title>
+<link rel="stylesheet" href="../../assets/css/avic.css">
+<script src="../../assets/js/data-store.js" defer></script>
+<script src="../../assets/js/session.js" defer></script>
+<script src="../../assets/js/api.js" defer></script>
+<script src="../../assets/js/ui.js" defer></script>
+<script src="../../assets/js/layout.js" defer></script>
+<script src="../../assets/js/pages-common.js" defer></script>
+<script src="../../assets/js/pages-complaints.js" defer></script>
+</head>
+<body data-title="Complaints" data-page="complaints" data-allow="claimant" data-role="claimant">
+<noscript><div class="noscript">Enable JavaScript to use this application.</div></noscript>
+<div class="shell">
+  <div class="main">
+    <main class="page">
+
+      <form id="complaint-form" class="panel" hidden><div class="panel__head"><h2>Raise a complaint</h2></div><div class="panel__body">
+        <div class="field"><label for="complaint-claim">Claim</label><select id="complaint-claim" name="claim_id" required></select></div>
+        <div class="field"><label for="complaint-details">Your concern and the outcome you are seeking</label><textarea id="complaint-details" name="details" maxlength="2000" required></textarea></div>
+        <button class="btn btn--primary" type="submit">Submit complaint</button>
+      </div></form>
+      <section id="complaint-list" aria-label="Complaint records"></section>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>

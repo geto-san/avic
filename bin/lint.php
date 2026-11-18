@@ -1,13 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Syntax-check every PHP file in the project (vendor/ and .git/ excluded).
- *
- *   php bin/lint.php        (or: composer lint)
- *
- * Silent on success; lists the broken files and exits 1 otherwise.
- */
+/* Syntax-check every PHP file in the project (vendor/ and .git/ excluded). */
 
 if (PHP_SAPI !== 'cli') {
     http_response_code(404);

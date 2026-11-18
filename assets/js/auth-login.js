@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (UI.qs('reason') === 'signin') note('warn', 'Sign in to open that page.');
 
-  /* already signed in? go straight to that desk */
   const live = AVIC.session();
   if (live) { location.replace(AVIC.homeFor(live.role)); return; }
 
@@ -24,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('../../config/auth/login.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': await AVIC.csrfToken() },
         body: JSON.stringify({
           email: form.elements.email.value.trim(),
           password: form.elements.password.value,

@@ -1,10 +1,4 @@
-/* ============================================================
-   AVIC — garage bay
-   A garage sees only the claims it holds a work order for, and
-   only the vehicle and damage fields of those claims. Claimant
-   identity, policy numbers and payout figures are never sent to
-   this desk — see AVIC.garageViewOf().
-   ============================================================ */
+// Garage work orders, estimates and quote submission.
 
 const Garage = {};
 
@@ -17,7 +11,6 @@ Garage.dashboard = function (s) {
   document.getElementById('k-pending').textContent = mine.filter(e => e.status === 'pending').length;
   document.getElementById('k-approved').textContent = mine.filter(e => e.status === 'approved').length;
   document.getElementById('k-value').innerHTML = UI.money(mine.filter(e => e.status === 'approved').reduce((t, e) => t + e.total_estimate, 0));
-  document.getElementById('greeting').textContent = s.name;
 
   UI.table('#orders', {
     rows: open,
@@ -45,7 +38,7 @@ Garage.workOrders = function (s) {
     rows,
     filter: o => !st || o.status === st,
     cols: [
-      { label: 'Claim', cell: o => '<span class="mono">' + AVIC.claim(o.claim_id).claim_number + '</span>' },
+      { label: 'Claim', cell: o => '<a class="link mono" href="estimate-new.html?claim=' + o.claim_id + '">' + AVIC.claim(o.claim_id).claim_number + '</a>' },
       { label: 'Vehicle', cell: o => UI.esc(AVIC.garageViewOf(AVIC.claim(o.claim_id)).vehicle) },
       { label: 'Plate', cell: o => '<span class="mono">' + UI.esc(AVIC.garageViewOf(AVIC.claim(o.claim_id)).plate) + '</span>' },
       { label: 'Damage type', cell: o => UI.esc(AVIC.labels.claim_type[AVIC.claim(o.claim_id).claim_type]) },
@@ -67,7 +60,7 @@ Garage.estimates = function (s) {
     rows: AVIC.estimates.filter(e => e.garage_user_id === s.id),
     sortKey: 'created_at',
     cols: [
-      { label: 'Claim', cell: e => '<span class="mono">' + AVIC.claim(e.claim_id).claim_number + '</span>' },
+      { label: 'Claim', cell: e => '<a class="link mono" href="estimate-new.html?claim=' + e.claim_id + '">' + AVIC.claim(e.claim_id).claim_number + '</a>' },
       { label: 'Submitted', key: 'created_at', sortable: true, cell: e => UI.date(e.created_at) },
       { label: 'Parts', cell: e => '<span class="mono">' + UI.money(e.parts_cost) + '</span>' },
       { label: 'Labour', cell: e => '<span class="mono">' + UI.money(e.labor_cost) + '</span>' },
@@ -95,10 +88,8 @@ Garage.estimateForm = function (s) {
   const view = AVIC.garageViewOf(claim);      // limited projection, by design
   const existing = AVIC.estimates.find(e => e.claim_id === claimId && e.garage_user_id === s.id);
 
-  document.getElementById('c-number').textContent = view.claim_number;
-  document.getElementById('c-sub').textContent = view.vehicle + ' · ' + view.plate;
   document.getElementById('c-vehicle').innerHTML =
-    '<dl class="kv">' +
+    '<dl class="kv"><dt>Claim reference</dt><dd class="mono">' + UI.esc(view.claim_number) + '</dd>' +
       '<dt>Vehicle</dt><dd>' + UI.esc(view.vehicle) + '</dd>' +
       '<dt>Number plate</dt><dd class="mono">' + UI.esc(view.plate) + '</dd>' +
       '<dt>Damage type</dt><dd>' + UI.esc(AVIC.labels.claim_type[view.claim_type]) + '</dd>' +
@@ -119,6 +110,12 @@ Garage.estimateForm = function (s) {
     }
   }
 
+  if (['paid','rejected','closed'].includes(claim.status) || AVIC.workOrders.some(order => +order.claim_id === claim.id && order.status === 'closed')) {
+    form.querySelectorAll('input,textarea,select,button').forEach(control => control.disabled = true);
+    form.querySelector('[type=submit]')?.classList.add('hidden');
+    document.getElementById('adj-note').insertAdjacentHTML('beforeend', '<p class="note">This claim is complete. The quote is available for reference and cannot be changed.</p>');
+  }
+
   function total() {
     const t = (+form.elements.parts_cost.value || 0) + (+form.elements.labor_cost.value || 0) + (+form.elements.other_cost.value || 0);
     document.getElementById('est-total').innerHTML = UI.money(t);
@@ -126,9 +123,6 @@ Garage.estimateForm = function (s) {
   }
   ['parts_cost', 'labor_cost', 'other_cost'].forEach(n => form.elements[n].oninput = total);
   total();
-
-  UI.dropzone('#dropzone', '#filelist');
-  UI.counters(form);
 
   form.onsubmit = e => {
     e.preventDefault();

@@ -9,3 +9,9 @@ uploads/
 /vendor/
 .phpunit.result.cache
 .phpunit.cache/
+
+# Local configuration, browser dependencies and test output
+.env
+/node_modules/
+/test-results/
+/playwright-report/

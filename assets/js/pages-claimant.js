@@ -1,28 +1,22 @@
-/* ============================================================
-   AVIC — claimant desk
-   A claimant only ever reads AVIC.claimsFor(session), which is
-   filtered on user_id. Opening someone else's claim id lands on
-   the 403 screen.
-   ============================================================ */
+// Claimant dashboard, claim details and submission wizard.
 
 const Claimant = {};
 const CLOSED_STATES = new Set(['paid', 'closed', 'rejected']);
 
-/* ---------------- dashboard ---------------- */
 Claimant.dashboard = function (s) {
   const mine = AVIC.claimsFor(s);
   const open = mine.filter(c => !CLOSED_STATES.has(c.status));
-  const paid = mine.filter(c => c.status === 'paid');
-  const paidTotal = paid.reduce((t, c) => t + (c.approved_amount || 0), 0);
+  // A settled claim stays paid after it is closed. Use actual completed payouts.
+  const paidTotal = mine.reduce((total, claim) => {
+    const payout = AVIC.payoutFor(claim.id);
+    return total + (payout?.status === 'completed' ? Number(payout.amount) : 0);
+  }, 0);
 
   document.getElementById('k-open').innerHTML = open.length;
   document.getElementById('k-draft').innerHTML = mine.filter(c => c.status === 'draft').length;
   document.getElementById('k-paid').innerHTML = UI.money(paidTotal);
   document.getElementById('k-policies').innerHTML = AVIC.policiesFor(s).filter(p => p.status === 'active').length;
 
-  document.getElementById('greeting').textContent = 'Hello, ' + s.name.split(' ')[0];
-
-  /* active claim card */
   const active = [...open].sort((a, b) => (b.submitted_at || '').localeCompare(a.submitted_at || ''))[0];
   const host = document.getElementById('active-claim');
   if (active) {
@@ -39,7 +33,6 @@ Claimant.dashboard = function (s) {
       '<a class="btn btn--primary" href="claim-new.html">File a claim</a></div>';
   }
 
-  /* recent claims */
   UI.table('#recent', {
     rows: mine.slice().sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5),
     cols: [
@@ -53,32 +46,22 @@ Claimant.dashboard = function (s) {
   });
 };
 
-Claimant.timelineClass = function (i, at) {
-  if (i < at) return 'is-done';
-  return i === at ? 'is-current' : '';
+/* Show recorded events, including document requests and closure, rather than
+   guessing that every claim followed the same sequence. */
+Claimant.timelineHTML = function (claim) {
+  const events = [{to_status: 'draft', changed_at: claim.created_at},
+    ...AVIC.history.filter(event => event.claim_id === claim.id && event.from_status !== event.to_status && AVIC.labels.status[event.to_status])];
+  if (events[events.length - 1].to_status !== claim.status) {
+    events.push({to_status: claim.status, changed_at: claim.updated_at});
+  }
+  return '<ol class="timeline">' + events.map((event, index) =>
+    '<li class="' + (index === events.length - 1 ? 'is-current' : 'is-done') + '">' +
+    '<span class="dot"></span><div><div class="timeline__t">' + UI.esc(AVIC.labels.status[event.to_status]) + '</div>' +
+    '<div class="timeline__d">' + UI.dateTime(event.changed_at) + '</div>' +
+    (event.to_status === 'rejected' && claim.rejection_reason ? '<p>' + UI.esc(claim.rejection_reason) + '</p>' : '') +
+    '</div></li>').join('') + '</ol>';
 };
 
-Claimant.timelineHTML = function (c) {
-  const ladder = c.status === 'rejected'
-    ? ['draft', 'submitted', 'under_review', 'rejected']
-    : AVIC.statusLadder;
-  const at = ladder.indexOf(c.status);
-  const stamps = {
-    draft: c.created_at, submitted: c.submitted_at, under_review: c.submitted_at,
-    approved: c.reviewed_at, rejected: c.reviewed_at, paid: c.resolved_at
-  };
-  return '<ol class="timeline">' + ladder.map((st, i) => {
-    const cls = Claimant.timelineClass(i, at);
-    return '<li class="' + cls + '">' +
-      '<span class="dot"></span><div>' +
-      '<div class="timeline__t">' + UI.esc(AVIC.labels.status[st]) + '</div>' +
-      '<div class="timeline__d">' + (i <= at ? UI.dateTime(stamps[st]) : 'Not reached yet') + '</div>' +
-      (st === c.status && c.rejection_reason ? '<div class="note note--stop" style="margin-top:8px">' + UI.esc(c.rejection_reason) + '</div>' : '') +
-      '</div></li>';
-  }).join('') + '</ol>';
-};
-
-/* ---------------- claims list ---------------- */
 Claimant.claims = function (s) {
   const rows = AVIC.claimsFor(s);
   let q = '', st = '';
@@ -106,7 +89,6 @@ Claimant.claims = function (s) {
   document.getElementById('f-status').onchange = e => { st = e.target.value; t.redraw(); };
 };
 
-/* ---------------- claim detail ---------------- */
 Claimant.detail = function (s) {
   const c = AVIC.claim(+UI.qs('id'));
   if (!AVIC.canSeeClaim(s, c)) {
@@ -114,20 +96,18 @@ Claimant.detail = function (s) {
     return;
   }
   const pol = AVIC.policy(c.policy_id);
-  const adj = c.adjuster_id ? AVIC.user(c.adjuster_id) : null;
   const docs = AVIC.docsFor(c.id);
+  UI.claimNextStep(c, 'claimant');
+  UI.renderDocumentRequests(c);
   const est = AVIC.estimatesFor(c.id)[0];
   const pay = AVIC.payoutFor(c.id);
 
-  document.getElementById('c-number').textContent = c.claim_number;
-  document.getElementById('c-sub').innerHTML =
-    AVIC.labels.claim_type[c.claim_type] + ' · filed ' + UI.date(c.created_at) +
-    (adj ? ' · handled by ' + UI.esc(adj.full_name) : ' · not yet assigned');
   document.getElementById('c-badge').innerHTML = UI.badge(c.status);
   document.getElementById('c-timeline').innerHTML = Claimant.timelineHTML(c);
 
   document.getElementById('c-facts').innerHTML =
     '<dl class="kv">' +
+      '<dt>Claim reference</dt><dd class="mono">' + UI.esc(c.claim_number) + '</dd>' +
       '<dt>Incident date</dt><dd>' + UI.date(c.incident_date) + '</dd>' +
       '<dt>Location</dt><dd>' + UI.esc(c.incident_location || '—') + '</dd>' +
       '<dt>Police reference</dt><dd class="mono">' + UI.esc(c.police_report_ref || '—') + '</dd>' +
@@ -167,40 +147,20 @@ Claimant.detail = function (s) {
       '<dt>Processed</dt><dd>' + UI.dateTime(pay.processed_at) + '</dd></dl>'
     : '<p class="muted small">A payout is created once an adjuster approves the claim.</p>';
 
-  /* actions that depend on status */
+  UI.renderPaymentEvidence(payHost, pay);
+  UI.renderSettlement(c, payHost);
+
   const acts = document.getElementById('c-actions');
   if (c.status === 'pending_docs') {
-    acts.innerHTML = '<a class="btn btn--primary btn--sm" href="claim-new.html?add=' + c.id + '">Add the missing documents</a>';
+    acts.innerHTML = '<a class="btn btn--primary btn--sm" href="document-upload.html?claim=' + c.id + '">Add the missing documents</a>';
   } else if (c.status === 'draft') {
     acts.innerHTML = '<a class="btn btn--primary btn--sm" href="claim-new.html?draft=' + c.id + '">Continue this draft</a>';
   } else {
     acts.innerHTML = '<a class="btn btn--sm" href="' + AVIC.url('config/api/claims-pdf.php?claim_id=' + c.id) + '">Download summary</a>';
   }
+  acts.insertAdjacentHTML('beforeend', '<a class="btn btn--sm" href="complaints.html?claim=' + c.id + '">Raise or view a complaint</a>');
 };
 
-/* ---------------- policies ---------------- */
-Claimant.policies = function (s) {
-  const host = document.getElementById('policy-list');
-  const mine = AVIC.policiesFor(s);
-  host.innerHTML = mine.map(p =>
-    '<div class="panel"><div class="panel__head">' +
-      '<div><h2 class="mono">' + UI.esc(p.policy_number) + '</h2>' +
-      '<div class="sub">' + UI.esc([p.vehicle_year, p.vehicle_make, p.vehicle_model].join(' ')) + ' · ' + UI.esc(p.vehicle_plate) + '</div></div>' +
-      '<div class="spacer"></div>' + UI.badge(p.status, { active: 'Active', expired: 'Expired', cancelled: 'Cancelled' }) + '</div>' +
-      '<div class="panel__body"><dl class="kv">' +
-        '<dt>Cover</dt><dd>' + UI.esc(AVIC.labels.coverage[p.coverage_type]) + '</dd>' +
-        '<dt>Cover limit</dt><dd class="mono">' + UI.money(p.coverage_limit) + '</dd>' +
-        '<dt>Premium</dt><dd class="mono">' + UI.money(p.premium) + ' per year</dd>' +
-        '<dt>Period</dt><dd>' + UI.date(p.start_date) + ' to ' + UI.date(p.end_date) + '</dd>' +
-        '<dt>Chassis (VIN)</dt><dd class="mono">' + UI.esc(p.vehicle_vin) + '</dd>' +
-      '</dl></div>' +
-      '<div class="panel__foot">' + (p.status === 'active'
-        ? '<a class="btn btn--sm btn--primary" href="claim-new.html?policy=' + p.id + '">File a claim on this policy</a>'
-        : '<span class="small">Claims cannot be filed against a policy that is not active.</span>') + '</div>' +
-    '</div>').join('');
-};
-
-/* ---------------- claim wizard helpers ---------------- */
 const RESUME_FIELDS = ['incident_date', 'incident_location', 'incident_description', 'police_report_ref'];
 
 Claimant.fieldValue = function (form, name) {
@@ -249,7 +209,6 @@ Claimant.markClaimType = function (type) {
   document.querySelector('.choice[data-type="' + type + '"]')?.classList.add('is-on');
 };
 
-/* resuming a server-side draft, or adding documents to a parked claim */
 Claimant.resumeClaim = function (form, sel, c) {
   if (c.policy_id) sel.value = c.policy_id;
   Claimant.fillForm(form, c, RESUME_FIELDS);
@@ -260,7 +219,6 @@ Claimant.resumeClaim = function (form, sel, c) {
   sel.onchange();
 };
 
-/* restore the sessionStorage draft if one was left behind */
 Claimant.restoreDraft = function (form, sel, stamp) {
   const kept = sessionStorage.getItem('avic.draft');
   if (!kept) return;
@@ -288,12 +246,10 @@ Claimant.summaryHTML = function (form, p, fileCount) {
     '<dt>Description</dt><dd>' + UI.esc(v('incident_description') || '—') + '</dd>' +
     '<dt>Police reference</dt><dd class="mono">' + UI.esc(v('police_report_ref') || 'None') + '</dd>' +
     '<dt>Documents</dt><dd>' + documents + '</dd>' +
-    '<dt>Garage</dt><dd>' + UI.esc(v('garage_name') || 'Not chosen yet') + '</dd>' +
     '<dt>Estimate</dt><dd class="mono">' + UI.money(Claimant.estimateTotal(form)) + '</dd>' +
     '</dl>';
 };
 
-/* the claim-core fields, shared by draft and submit */
 Claimant.wizardCore = function (form, claimId, forSubmit) {
   const v = n => Claimant.fieldValue(form, n);
   const total = Claimant.estimateTotal(form);
@@ -310,16 +266,23 @@ Claimant.wizardCore = function (form, claimId, forSubmit) {
   return fields;
 };
 
-/* ---------------- claim wizard ---------------- */
 Claimant.wizard = function (s) {
   const form = document.getElementById('wizard');
   const steps = Array.from(document.querySelectorAll('.wizstep'));
   const marks = Array.from(document.querySelectorAll('.step'));
   let at = 0;
   const draft = { files: [] };
+  if (UI.qs('add')) { location.replace('document-upload.html?claim=' + UI.qs('add')); return; }
   const state = { claimId: +UI.qs('draft') || +UI.qs('add') || 0 };
 
   const policies = AVIC.policiesFor(s);
+  if (!policies.some(policy => policy.status === 'active')) {
+    document.getElementById('wizard').hidden = true;
+    document.querySelector('.steps').hidden = true;
+    const notice = document.createElement('section'); notice.className = 'panel';
+    notice.innerHTML = '<div class="panel__body"><h2>Add your existing insurance policy first</h2><p>Register the policy you already hold. Once an adjuster verifies it, you can file a claim.</p><a class="btn btn--primary" href="policies.html">Add an existing policy</a></div>';
+    document.getElementById('wizard').insertAdjacentElement('beforebegin',notice);return;
+  }
   const sel = document.getElementById('policy_id');
   sel.innerHTML = Claimant.policyOptionsHTML(policies);
 
@@ -331,10 +294,9 @@ Claimant.wizard = function (s) {
   };
   if (preset) sel.onchange();
 
-  /* claim type as clickable choices */
   document.querySelectorAll('.choice[data-type]').forEach(ch => ch.onclick = () => {
-    document.querySelectorAll('.choice[data-type]').forEach(x => x.classList.remove('is-on'));
-    ch.classList.add('is-on');
+    document.querySelectorAll('.choice[data-type]').forEach(x => { x.classList.remove('is-on'); x.setAttribute('aria-pressed', 'false'); });
+    ch.classList.add('is-on'); ch.setAttribute('aria-pressed', 'true');
     document.getElementById('claim_type').value = ch.dataset.type;
     document.getElementById('claim_type').dispatchEvent(new Event('input', { bubbles: true }));
   });
@@ -371,24 +333,25 @@ Claimant.wizard = function (s) {
   document.getElementById('back').onclick = () => show(at - 1);
   marks.forEach((m, i) => m.onclick = () => { if (i < at) show(i); });
 
-  /* running estimate total */
   ['parts_cost', 'labor_cost', 'other_cost'].forEach(n => {
     if (form.elements[n]) form.elements[n].oninput = () => {
       document.getElementById('est-total').innerHTML = UI.money(Claimant.estimateTotal(form));
     };
   });
 
-  /* auto-save indicator — the plan's sessionStorage draft tick */
+  /* Two different saves: the timer keeps text in this browser tab;
+     the Save draft button ALSO sends it to PHP for storage in MySQL.
+     File objects are held in memory until submission, not in either draft. */
   const stamp = document.getElementById('autosave');
-  function saveDraft() {
+  function saveLocalDraft() {
     const data = Object.fromEntries(new FormData(form).entries());
     sessionStorage.setItem('avic.draft', JSON.stringify(data));
     stamp.textContent = 'Draft saved ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   }
   form.addEventListener('input', () => { stamp.textContent = 'Unsaved changes'; });
-  setInterval(saveDraft, 60000);
+  setInterval(saveLocalDraft, 60000);
   document.getElementById('save-draft').onclick = () => {
-    saveDraft();
+    saveLocalDraft();
     const data = { mode: 'draft', ...Claimant.wizardCore(form, state.claimId, false) };
     API.post('config/api/claims.php', data).then(r => {
       if (!r.ok || !r.data) return UI.toast(r.data?.message || 'Could not save the draft.', 'bad');
@@ -397,7 +360,6 @@ Claimant.wizard = function (s) {
     });
   };
 
-  /* a claim waiting for documents cannot go back to a draft — the server refuses it */
   if (UI.qs('add')) document.getElementById('save-draft').classList.add('hidden');
 
   if (!UI.qs('policy')) Claimant.restoreDraft(form, sel, stamp);
@@ -409,11 +371,12 @@ Claimant.wizard = function (s) {
       body: '<p>Once submitted you cannot edit the details yourself. An adjuster will be assigned and you will get a decision within ' +
             AVIC.settings.claims_sla_days + ' days.</p>',
       confirm: 'Submit claim',
-      onConfirm: () => submitClaim()
+      onConfirm: () => submitClaimToServer()
     });
   };
 
-  async function submitClaim() {
+  async function submitClaimToServer() {
+    // 1. Package field values and selected files into one HTTP request body.
     const btn = document.getElementById('submit');
     const fd = new FormData();
     fd.set('mode', 'submit');
@@ -422,9 +385,11 @@ Claimant.wizard = function (s) {
     draft.files.forEach(rec => { if (rec.file) fd.append('files[]', rec.file, rec.name); });
 
     btn.disabled = true;
+    // 2. Wait for PHP to validate and save; the browser cannot approve a claim.
     const r = await API.postForm('config/api/claims.php', fd);
     btn.disabled = false;
 
+    // 3. Keep the form on failure. Clear the local draft only after success.
     if (!r.ok || !r.data) return UI.toast(r.data?.message || 'Could not submit the claim.', 'bad');
     try {
       sessionStorage.removeItem('avic.draft');
@@ -439,14 +404,12 @@ Claimant.wizard = function (s) {
   show(0);
 };
 
-/* ---------------- boot ---------------- */
 AVIC.boot(function (s) {
   ({
     dashboard: Claimant.dashboard,
     claims: Claimant.claims,
     'claim-detail': Claimant.detail,
     'claim-new': Claimant.wizard,
-    policies: Claimant.policies,
     notifications: AVIC.pages.notifications
   }[document.body.dataset.page] || function () {})(s);
 });

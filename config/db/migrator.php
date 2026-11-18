@@ -1,26 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Minimal SQL-file migrations.
- *
- *   database/migrations/0001_baseline.sql, 0002_add_something.sql, ...
- *
- * Files run once each, in filename order; the ones already run are listed in
- * the schema_migrations table. Run them with:
- *
- *   php bin/migrate.php            apply whatever is pending
- *   php bin/migrate.php --status   show applied / pending
- *
- * Rules for writing a migration:
- *   - plain SQL, statements separated by ";" (no procedures / DELIMITER);
- *   - MySQL/MariaDB cannot roll back DDL, so a migration that fails half way
- *     leaves its earlier statements in place and is NOT recorded — write each
- *     statement so it can safely run again (IF NOT EXISTS, IF EXISTS);
- *   - never edit a migration that has been applied anywhere; add a new one.
- *
- * This file only defines functions (no side effects), so it can be unit tested.
- */
+/* Minimal SQL-file migrations. */
 
 /** The collation the baseline was written with (MariaDB 11.3+). */
 const MIGRATION_DEFAULT_COLLATION = 'utf8mb4_uca1400_ai_ci';

@@ -1,13 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * GET config/api/claims-pdf.php?claim_id=N
- *
- * Renders a claim summary as a real PDF (no libraries — a hand-rolled,
- * minimal, valid single-page PDF). Claimants may download their own
- * claims; adjusters, the claims on their desk.
- */
+/* GET config/api/claims-pdf.php?claim_id=N */
 
 require_once __DIR__ . '/_helpers.php';
 
@@ -15,7 +9,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     apiJson(405, ['message' => 'Method not allowed']);
 }
 
-$user = apiUser();
+$user = apiUser(['claimant', 'adjuster']);
 $claimId = (int)($_GET['claim_id'] ?? 0);
 if (!$claimId) {
     apiJson(400, ['message' => 'Missing claim id.']);

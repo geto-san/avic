@@ -1,30 +1,28 @@
-/* ============================================================
-   AVIC — API client + data hydration
-   The single talking-to-server module. AVIC.loadData() pulls the
-   role-scoped dataset for the signed-in user and pours it into the
-   AVIC.* arrays every page already reads, so the renderers needed no
-   rewrite; writes go back through API.post() and the arrays refresh.
-   The server session is the real gate — sessionStorage is only a cache.
-   ============================================================ */
+// HTTP requests with session cookies and CSRF protection.
 
 window.API = (typeof API !== 'undefined') ? API : {};
 
 API.base = (typeof AVIC !== 'undefined' && AVIC.url) ? AVIC.url : f => f;
 
 API.request = async function (path, opts) {
+  // Include the session cookie so PHP can identify who made this request.
   const init = opts || {};
   init.credentials = 'same-origin';
+  if (!init.signal && typeof AbortSignal !== 'undefined' && AbortSignal.timeout) init.signal = AbortSignal.timeout(20000);
   init.headers = { ...init.headers };
 
   let res;
   try {
+    if (!['GET', 'HEAD'].includes(init.method || 'GET')) {
+      init.headers['X-CSRF-Token'] = await AVIC.csrfToken();
+    }
     res = await fetch(API.base(path), init);
   } catch (err) {
     return { status: 0, ok: false, data: null };
   }
 
   let data = {};
-  try { data = await res.json(); } catch (e) { /* empty body */ }
+  try { data = await res.json(); } catch (e) {  }
 
   /* the server session is gone or the account changed — the local
      mirror is worthless, send the person back to sign-in. */
@@ -49,6 +47,7 @@ API.post = function (path, payload) {
 };
 
 API.postForm = function (path, formData) {
+  // The browser sets multipart/form-data and its boundary when files are sent.
   return API.request(path, { method: 'POST', body: formData });
 };
 
@@ -59,12 +58,11 @@ API.postForm = function (path, formData) {
    ------------------------------------------------------------ */
 AVIC.hydrate = function (d) {
   ['users', 'policies', 'claims', 'documents', 'estimates', 'workOrders',
-   'notifications', 'payouts', 'garages'].forEach(k => { AVIC[k] = d[k] || []; });
+   'notifications', 'payouts', 'garages', 'history', 'documentRequests', 'requestedDocuments', 'settlements', 'paymentEvidence'].forEach(k => { AVIC[k] = d[k] || []; });
   if (d.settings) Object.assign(AVIC.settings, d.settings);
 
   if (d.me) {
-    const prev = AVIC.session() || {};
-    AVIC.startServerSession(d.me, { impersonatedBy: prev.impersonatedBy || null });
+    AVIC.startServerSession(d.me);
   }
   return AVIC.session();
 };
@@ -78,7 +76,6 @@ AVIC.loadData = async function () {
     throw new Error('unauthenticated');
   }
   if (!res.ok || !res.data) {
-    location.replace(API.base('pages/auth/login.html?reason=server'));
     throw new Error('bootstrap failed');
   }
   const meStatus = res.data.me?.status;
@@ -90,8 +87,8 @@ AVIC.loadData = async function () {
   return AVIC.hydrate(res.data);
 };
 
-/* Refresh the data after a write (claim, decision, quote, …). Pages call
-   this then re-render. */
+/* Call after a successful write to fetch current database values. Posting
+   alone does not update AVIC's arrays; callers refresh or navigate to a page. */
 AVIC.refresh = function () {
   return AVIC.loadData();
 };

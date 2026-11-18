@@ -6,11 +6,8 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
 <title>Claim review · AVIC</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/css/avic.css">
-<script src="../../assets/js/mock-data.js" defer></script>
+<script src="../../assets/js/data-store.js" defer></script>
 <script src="../../assets/js/session.js" defer></script>
 <script src="../../assets/js/api.js" defer></script>
 <script src="../../assets/js/ui.js" defer></script>
@@ -18,16 +15,13 @@
 <script src="../../assets/js/pages-common.js" defer></script>
 <script src="../../assets/js/pages-adjuster.js" defer></script>
 </head>
-<body data-page="review" data-allow="adjuster" data-crumb="Claim review" data-role="adjuster">
-<noscript><div class="noscript">This prototype renders its screens with JavaScript. Enable it to walk through the prototype.</div></noscript>
+<body data-title="Review claim" data-page="review" data-allow="adjuster" data-role="adjuster">
+<noscript><div class="noscript">Enable JavaScript to use this application.</div></noscript>
 <div class="shell">
   <div class="main">
     <main class="page">
 
-      <div class="page__head">
-        <div><h1 class="mono" id="c-number">—</h1><div class="sub" id="c-sub"></div></div>
-        <div class="page__actions"><span id="c-badge"></span> <span id="c-sla"></span></div>
-      </div>
+        <div class="filters"><div id="claim-status-actions" class="btnrow" aria-label="Claim lifecycle"></div><div class="page__actions"><span id="c-badge"></span> <span id="c-sla"></span></div></div>
 
       <div class="review">
         <div>
@@ -70,10 +64,15 @@
               <form id="decision">
                 <input type="hidden" name="decision">
                 <div class="choices" style="margin-bottom:16px">
-                  <div class="choice" data-decision="approve"><div class="choice__t">Approve</div><div class="choice__d">Settle at an amount you set</div></div>
-                  <div class="choice" data-decision="reject"><div class="choice__t">Reject</div><div class="choice__d">Not payable under the policy</div></div>
-                  <div class="choice" data-decision="request_docs"><div class="choice__t">Ask for documents</div><div class="choice__d">Send it back to the claimant</div></div>
+                  <button type="button" class="choice" aria-pressed="false" data-decision="approve"><span class="choice__t">Approve</span><span class="choice__d">Settle at an amount you set</span></button>
+                  <button type="button" class="choice" aria-pressed="false" data-decision="reject"><span class="choice__t">Reject</span><span class="choice__d">Not payable under the policy</span></button>
+                  <button type="button" class="choice" aria-pressed="false" data-decision="request_docs"><span class="choice__t">Ask for documents</span><span class="choice__d">Send it back to the claimant</span></button>
                 </div>
+                <section id="document-request-fields" hidden>
+                  <h3>Documents needed</h3><p class="muted">Choose each document, or select Other and enter its name.</p>
+                  <div id="document-request-rows"></div>
+                  <button class="btn" id="add-document-request" type="button">Add another document</button>
+                </section>
                 <div class="field hidden" id="amount-field">
                   <label for="recommended_amount">Amount to approve (UGX)</label>
                   <input type="number" min="0" step="1000" id="recommended_amount" name="recommended_amount">
@@ -81,9 +80,10 @@
                   <div class="err" id="amount-err"></div>
                 </div>
                 <div class="field">
-                  <label for="review_notes">Notes for the file <span class="counter" id="note-count"></span></label>
+                  <label for="review_notes">Decision reason / document request <span class="counter" id="note-count"></span></label>
                   <textarea id="review_notes" name="review_notes" maxlength="500" data-counter data-counter-target="#note-count"
                     placeholder="What you checked and why you landed on this decision."></textarea>
+                  <div class="hint">Rejection reasons and document requests are shown to the claimant. Approval notes stay internal.</div>
                 </div>
                 <div class="btnrow">
                   <button class="btn btn--primary" type="submit">Record decision</button>
@@ -91,12 +91,7 @@
               </form>
             </div>
           </div>
-          <div class="future">
-  <span class="future__tag">Future prospect</span>
-  <h3>Side-by-side fraud signals</h3>
-  <p>Duplicate-incident detection, repeat-claimant history and image tampering checks surfaced next to the decision.</p>
-  
-</div>
+
         </div>
       </div>
 

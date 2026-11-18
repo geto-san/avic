@@ -1,8 +1,4 @@
-/* ============================================================
-   AVIC — 403 and 404 screens
-   The 403 names both desks so the person understands what
-   happened rather than seeing a bare error code.
-   ============================================================ */
+// Access-denied and missing-page recovery links.
 
 (function () {
   const s = AVIC.session();

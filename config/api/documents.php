@@ -1,15 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * POST config/api/documents.php
- *
- *   { "action": "verify", "id": 7 }
- *
- * An adjuster stamps a document as verified. Only documents on claims the
- * adjuster actually holds are touchable; the claimant is told, and the
- * setter of the verified_by field is never a client-supplied value.
- */
+/* POST config/api/documents.php */
 
 require_once __DIR__ . '/_helpers.php';
 
