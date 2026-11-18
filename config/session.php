@@ -9,14 +9,9 @@ function avicSession(bool $remember = false): void
     }
 
     session_name('AVICSESSID');
-    session_set_cookie_params([
-        'lifetime' => $remember ? 2592000 : 0,
-        'path'     => '/',
-        'domain'   => '',
-        'secure'   => true,
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
+    ini_set('session.cookie_samesite', 'Lax');
+    // Pass Secure and HttpOnly explicitly, including for loopback development.
+    session_set_cookie_params($remember ? 2592000 : 0, '/', '', true, true);
     ini_set('session.use_strict_mode', '1');
     session_start();
 }
