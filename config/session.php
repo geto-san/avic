@@ -8,17 +8,15 @@ function avicSession(bool $remember = false): void
         return;
     }
 
-    $options = [
+    session_name('AVICSESSID');
+    session_set_cookie_params([
         'lifetime' => $remember ? 2592000 : 0,
         'path'     => '/',
         'domain'   => '',
         'secure'   => true,
         'httponly' => true,
         'samesite' => 'Lax',
-    ];
-
-    session_name('AVICSESSID');
-    session_set_cookie_params($options);
+    ]);
     ini_set('session.use_strict_mode', '1');
     session_start();
 }
