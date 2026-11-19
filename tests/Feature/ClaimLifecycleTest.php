@@ -61,6 +61,7 @@ final class ClaimLifecycleTest extends FeatureTestCase
         $this->assertSame('submitted', $this->claimStatus(103));
         $adjuster = (int)$this->value('SELECT adjuster_id FROM claims WHERE id = 103');
         $this->assertContains($adjuster, [2, 8], 'the claim must land in an adjuster\'s queue, not nowhere');
+        $this->assertSame(1, $this->rows('coverage_checks', 'claim_id = 103 AND completed_at IS NULL'));
         $this->assertNotFalse($this->value('SELECT submitted_at FROM claims WHERE id = 103'));
         $this->assertSame(1, $this->rows('notifications', "user_id = ? AND claim_id = 103 AND type = 'claim_assigned'", [$adjuster]));
     }

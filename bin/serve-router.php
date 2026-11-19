@@ -9,7 +9,7 @@ $public = $path === '/' || $path === '/index.html' || $path === '/robots.txt'
     || preg_match('~^/assets/(?:css/[a-z-]+\.css|js/[a-z-]+\.js|favicon\.svg)$~D', $path)
     || preg_match('~^/pages/(?:auth|claimant|adjuster|garage|errors)/[a-z0-9-]+\.html$~D', $path)
     || preg_match('~^/config/auth/(?:login|logout|register|forgot-password|reset-password|session-token)\.php$~D', $path)
-    || preg_match('~^/config/api/(?:bootstrap|claims|claims-assign|claims-decision|claims-status|claims-pdf|documents|estimates|estimates-decision|notifications|payouts-update|policies|health|settlements|complaints|document-responses|policy-registrations)\.php$~D', $path)
+    || preg_match('~^/config/api/(?:bootstrap|coverage-checks|claims|claims-assign|claims-decision|claims-status|claims-pdf|documents|estimates|estimates-decision|notifications|payouts-update|policies|health|settlements|complaints|document-responses|policy-registrations)\.php$~D', $path)
     || $path === '/config/uploads.php';
 if (!$public || ($path !== '/' && !is_file($root . $path))) {
     http_response_code(404);

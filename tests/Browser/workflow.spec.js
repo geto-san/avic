@@ -250,3 +250,16 @@ test('password reset through a captured email and the browser', async ({page, ba
   });
   expect(reused.status()).toBe(400);
 });
+
+test('assigned adjuster records coverage evidence from the review queue', async ({page}) => {
+  await login(page, 'brian.okot@avic.ug');
+  await page.goto('/pages/adjuster/queue.html');
+  const task = page.locator('#coverage-tasks article').filter({has: page.getByRole('button', {name:'Record verification'})}).first();
+  const claimNumber = await task.locator('h3').innerText();
+  await task.getByLabel('Policy evidence checked').fill('Reviewed the synthetic schedule and cover period.');
+  await task.getByRole('button', {name:'Record verification'}).click();
+  await expect(page.locator('#coverage-tasks')).not.toContainText(claimNumber);
+  await page.reload();
+  await expect(page.locator('.shell')).toHaveClass(/is-ready/);
+  await expect(page.locator('#coverage-tasks')).not.toContainText(claimNumber);
+});

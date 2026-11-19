@@ -15,7 +15,7 @@ require_once dirname(__DIR__, 2) . '/config/db/migrator.php';
 final class MigrationsTest extends TestCase
 {
     private const TABLES = [
-        'adjuster_reviews', 'audit_log', 'claim_documents', 'claim_status_history', 'claims', 'garage_estimates',
+        'staff_permissions', 'coverage_checks', 'adjuster_reviews', 'audit_log', 'claim_documents', 'claim_status_history', 'claims', 'garage_estimates',
         'policy_registrations', 'requested_documents', 'claim_complaints', 'claim_document_requests', 'claim_settlements', 'payout_evidence', 'login_attempts', 'notifications', 'password_resets', 'payouts', 'policies', 'settings', 'users', 'work_orders',
     ];
 
@@ -60,7 +60,7 @@ final class MigrationsTest extends TestCase
     {
         $applied = migrate(TestDatabase::connect());
 
-        $this->assertSame(['0001_baseline', '0002_payout_integrity', '0003_claim_workflow', '0004_recover_pending_offers', '0005_requested_documents', '0006_policy_registrations'], $applied);
+        $this->assertSame(['0001_baseline', '0002_payout_integrity', '0003_claim_workflow', '0004_recover_pending_offers', '0005_requested_documents', '0006_policy_registrations', '0007_coverage_checks'], $applied);
         $expected = [...self::TABLES, 'schema_migrations'];
         sort($expected);
         $this->assertSame($expected, $this->tables());
@@ -71,7 +71,7 @@ final class MigrationsTest extends TestCase
         migrate(TestDatabase::connect());
 
         $this->assertSame([], migrate(TestDatabase::connect()));
-        $this->assertSame(6, (int)TestDatabase::connect()->query('SELECT COUNT(*) FROM schema_migrations')->fetchColumn());
+        $this->assertSame(7, (int)TestDatabase::connect()->query('SELECT COUNT(*) FROM schema_migrations')->fetchColumn());
     }
 
     public function testADatabaseBuiltBeforeMigrationsExistedIsAdoptedWithoutLosingData(): void
@@ -84,7 +84,7 @@ final class MigrationsTest extends TestCase
 
         $applied = migrate($pdo);
 
-        $this->assertSame(['0001_baseline', '0002_payout_integrity', '0003_claim_workflow', '0004_recover_pending_offers', '0005_requested_documents', '0006_policy_registrations'], $applied, 'recorded, harmlessly');
+        $this->assertSame(['0001_baseline', '0002_payout_integrity', '0003_claim_workflow', '0004_recover_pending_offers', '0005_requested_documents', '0006_policy_registrations', '0007_coverage_checks'], $applied, 'recorded, harmlessly');
         $this->assertSame(1, (int)$pdo->query("SELECT COUNT(*) FROM users WHERE email = 'kept@example.ug'")->fetchColumn());
     }
 

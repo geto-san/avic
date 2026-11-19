@@ -296,6 +296,11 @@ if (PHP_SAPI === 'cli') {
         seedNotifications($conn);
         seedSettings($conn);
         seedHistory($conn);
+        $conn->exec("INSERT INTO coverage_checks (claim_id, due_at)
+            SELECT c.id, DATE_ADD(c.submitted_at, INTERVAL 14 DAY) FROM claims c
+            LEFT JOIN coverage_checks t ON t.claim_id = c.id
+            WHERE c.id BETWEEN 101 AND 108 AND c.status IN ('submitted','pending_docs','under_review')
+            AND t.claim_id IS NULL");
     }
     echo 'Done. Any demo account signs in with password: ' . $demoSecret . "\n";
 }

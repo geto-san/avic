@@ -81,7 +81,7 @@ function advancePayout(PDO $conn, array $user, int $payoutId, string $action, ar
     }
     $to = $targets[$action][$from];
 
-    assertPolicyCoverage($conn, $claim, (float)$payout['amount']);
+    assertPolicyCoverage($conn, $claim, (string)$payout['amount']);
 
     assertNoOpenComplaint($conn, $claimId);
     $offer = $conn->prepare('SELECT status FROM claim_settlements WHERE claim_id = ?');

@@ -6,7 +6,7 @@ RewriteRule ^(?:index\.html|robots\.txt)$ - [L]
 RewriteRule ^assets/(?:css/[a-z-]+\.css|js/[a-z-]+\.js|favicon\.svg)$ - [L]
 RewriteRule ^pages/(?:auth|claimant|adjuster|garage|errors)/[a-z0-9-]+\.html$ - [L]
 RewriteRule ^config/auth/(?:login|logout|register|forgot-password|reset-password|session-token)\.php$ - [L]
-RewriteRule ^config/api/(?:bootstrap|claims|claims-assign|claims-decision|claims-status|claims-pdf|documents|estimates|estimates-decision|notifications|payouts-update|policies|health|settlements|complaints|document-responses|policy-registrations)\.php$ - [L]
+RewriteRule ^config/api/(?:bootstrap|coverage-checks|claims|claims-assign|claims-decision|claims-status|claims-pdf|documents|estimates|estimates-decision|notifications|payouts-update|policies|health|settlements|complaints|document-responses|policy-registrations)\.php$ - [L]
 RewriteRule ^config/uploads\.php$ - [L]
 RewriteRule ^ - [R=404,L]
 <IfModule mod_headers.c>

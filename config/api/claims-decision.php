@@ -17,7 +17,14 @@ if (!is_array($input)) {
 
 $claimId = (int)($input['claim_id'] ?? 0);
 $decision = (string)($input['decision'] ?? '');
-$amount = isset($input['amount']) && $input['amount'] !== '' && $input['amount'] !== null ? (float)$input['amount'] : null;
+$amount = null;
+if ($decision === 'approve') {
+    try {
+        $amount = \Avic\Finance\ClaimAmount::decimal(\Avic\Finance\ClaimAmount::units($input['amount'] ?? null));
+    } catch (InvalidArgumentException $error) {
+        apiJson(422, ['message' => $error->getMessage()]);
+    }
+}
 $notes = trim((string)($input['review_notes'] ?? '')) ?: null;
 
 if (!in_array($decision, ['approve', 'reject', 'request_docs'], true)) {
@@ -40,7 +47,7 @@ try {
  *
  * @return array{status:string, claim_number:string}
  */
-function recordDecision(PDO $conn, array $user, int $claimId, string $decision, ?float $amount, ?string $notes, array $documents = []): array
+function recordDecision(PDO $conn, array $user, int $claimId, string $decision, ?string $amount, ?string $notes, array $documents = []): array
 {
     // 1. Lock the claim and check whether its current state permits this decision.
     $claim = claimLock($conn, $claimId);
@@ -64,7 +71,7 @@ function recordDecision(PDO $conn, array $user, int $claimId, string $decision, 
 
     // 2. Approval needs a positive amount, a covered date/peril and a valid limit.
     if ($decision === 'approve') {
-        assertPolicyCoverage($conn, $claim, $amount ?? 0);
+        assertPolicyCoverage($conn, $claim, $amount ?? '0');
     }
 
     // 3. Update the claim and record who decided, what changed and why.
@@ -116,7 +123,7 @@ function recordDecision(PDO $conn, array $user, int $claimId, string $decision, 
         ]);
         notify($conn, $claimant, $claimId, 'payout',
             'Claim approved',
-            'AVIC approved ' . number_format($amount) . ' UGX on claim ' . $claim['claim_number'] . '. Settlement is being prepared.');
+            'AVIC approved ' . $amount . ' UGX on claim ' . $claim['claim_number'] . '. Settlement is being prepared.');
     } elseif ($decision === 'reject') {
         notify($conn, $claimant, $claimId, 'status_changed',
             'Claim rejected',

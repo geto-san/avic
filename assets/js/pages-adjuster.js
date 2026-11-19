@@ -36,7 +36,7 @@ Adjuster.dashboard = function (s) {
   });
 };
 
-Adjuster.queue = function (s) {
+Adjuster.queue = async function (s) {
   const rows = AVIC.claimsFor(s).filter(c => OPEN_STATES.has(c.status));
   let q = '', st = '';
   const t = UI.table('#queue-table', {
@@ -59,6 +59,8 @@ Adjuster.queue = function (s) {
   });
   document.getElementById('f-q').oninput = e => { q = e.target.value.toLowerCase(); t.redraw(); };
   document.getElementById('f-status').onchange = e => { st = e.target.value; t.redraw(); };
+  await Adjuster.coverageTasks(s);
+
 };
 
 Adjuster.decided = function (s) {
@@ -409,7 +411,7 @@ Adjuster.setupDecisionForm = function (c, est, pol) {
         API.post('config/api/claims-decision.php', {
           claim_id: c.id,
           decision: form.elements.decision.value,
-          amount: form.elements.decision.value === 'approve' ? +amount.value : null,
+          amount: form.elements.decision.value === 'approve' ? amount.value : null,
           documents: form.elements.decision.value === 'request_docs' ? [...requestFields.querySelectorAll('[data-document-row]')].map(row => ({document_type:row.querySelector('select').value, document_name:row.querySelector('input').value})) : [],
           review_notes: form.elements.review_notes.value
         }).then(r => {
@@ -422,7 +424,7 @@ Adjuster.setupDecisionForm = function (c, est, pol) {
 };
 
 if (document.body.dataset.page !== 'policy-issue') AVIC.boot(function (s) {
-  ({
+  return ({
     dashboard: Adjuster.dashboard,
     queue: Adjuster.queue,
     review: Adjuster.review,
@@ -431,3 +433,55 @@ if (document.body.dataset.page !== 'policy-issue') AVIC.boot(function (s) {
     notifications: AVIC.pages.notifications
   }[document.body.dataset.page] || function () {})(s);
 });
+
+Adjuster.coverageTasks = async function (session, after = 0) {
+  const host = document.getElementById('coverage-tasks');
+  const more = document.getElementById('more-coverage');
+  more.disabled = true;
+  const response = await API.get('config/api/coverage-checks.php?after=' + after);
+  if (!response.ok) {
+    more.hidden = false;
+    more.disabled = false;
+    more.textContent = 'Retry loading tasks';
+    more.onclick = () => Adjuster.coverageTasks(session, after);
+    return;
+  }
+  if (!after) host.replaceChildren();
+  for (const task of response.data.tasks) {
+    const article = document.createElement('article');
+    const title = document.createElement('h3');
+    title.textContent = task.claim_number;
+    const details = document.createElement('p');
+    details.textContent = (task.owner || 'Unassigned') + ' · Due ' + task.due_at + ' UTC';
+    article.append(title, details);
+    if (Number(task.adjuster_id) === Number(session.id)) {
+      const form = document.createElement('form');
+      const label = document.createElement('label');
+      label.textContent = 'Policy evidence checked';
+      const input = document.createElement('input');
+      input.required = true;
+      input.maxLength = 500;
+      label.append(input);
+      const save = document.createElement('button');
+      save.type = 'submit';
+      save.className = 'btn';
+      save.textContent = 'Record verification';
+      form.append(label, save);
+      form.onsubmit = async event => {
+        event.preventDefault();
+        save.disabled = true;
+        const result = await API.post('config/api/coverage-checks.php', {claim_id:task.id, evidence:input.value});
+        save.disabled = false;
+        if (!result.ok) return UI.toast(result.data?.message || 'Could not record verification.', 'bad');
+        await Adjuster.coverageTasks(session);
+      };
+      article.append(form);
+    }
+    host.append(article);
+  }
+  if (!host.childElementCount) host.textContent = 'No coverage checks pending.';
+  more.hidden = response.data.next === null;
+  more.disabled = false;
+  more.textContent = 'Load more tasks';
+  more.onclick = () => Adjuster.coverageTasks(session, response.data.next);
+};

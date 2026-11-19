@@ -29,7 +29,15 @@ function apiUser(array $roles = []): array
     if (!$u) {
         apiJson(401, ['message' => 'Not signed in.']);
     }
-    if (($u['status'] ?? '') !== 'active') {
+    global $conn;
+    $account = $conn->prepare('SELECT status, role FROM users WHERE id = ?');
+    $account->execute([$u['id']]);
+    $current = $account->fetch();
+    if (!$current || $current['role'] !== $u['role']) {
+        apiJson(403, ['message' => 'Account permissions changed. Sign in again.']);
+    }
+    $u['status'] = $current['status'];
+    if ($u['status'] !== 'active') {
         apiJson(403, ['message' => 'This account is ' . ($u['status'] ?? 'unknown') . ' and cannot use the portal.']);
     }
     if ($roles && !in_array($u['role'], $roles, true)) {

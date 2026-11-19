@@ -216,6 +216,15 @@ function persistClaim(PDO $conn, array $user, string $mode, int $existingId, arr
              ->execute(['cid' => $claimId, 'by' => $uid, 'from' => $oldStatus ?: 'draft', 'to' => 'submitted', 'notes' => 'Claim submitted by policy holder']);
         audit($conn, $user, 'claim.submitted', 'claim', $claimId, ['status' => $oldStatus], ['status' => 'submitted', 'documents' => $savedDocs]);
 
+        if ($oldStatus === 'pending_docs') {
+            // This legacy form can change policy or loss details. Recheck evidence on resubmission.
+            $conn->prepare('UPDATE coverage_checks SET completed_by = NULL, completed_at = NULL, evidence = NULL WHERE claim_id = ?')
+                ->execute([$claimId]);
+        } else {
+            $days = (int)apiSettings($conn)['claims_sla_days'];
+            $deadline = claimDue(gmdate('Y-m-d H:i:s'), $days);
+            $conn->prepare('INSERT INTO coverage_checks (claim_id, due_at) VALUES (?, ?)')->execute([$claimId, $deadline]);
+        }
         if ($adjuster) {
             notify($conn, $adjuster, $claimId, 'claim_assigned',
                 'New claim in your queue',

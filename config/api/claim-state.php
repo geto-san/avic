@@ -3,27 +3,10 @@ declare(strict_types=1);
 
 /* The one place that says how a claim's status may change. */
 
-const CLAIM_TRANSITIONS = [
-    'draft'        => ['draft', 'submitted'],              // save, or submit
-    'submitted'    => ['under_review', 'approved', 'rejected', 'pending_docs'],
-    'under_review' => ['approved', 'rejected', 'pending_docs'],
-    'pending_docs' => ['submitted', 'approved', 'rejected'], // claimant answers, or adjuster decides
-    'approved'     => ['paid'],
-    'paid'         => ['closed'],
-    'rejected'     => ['closed'],
-    'closed'       => [],
-];
+require_once dirname(__DIR__, 2) . '/src/Claims/Lifecycle.php';
 
-const CLAIM_STATUS_WORDS = [
-    'draft'        => 'a draft',
-    'submitted'    => 'already submitted',
-    'under_review' => 'under review',
-    'pending_docs' => 'waiting for documents',
-    'approved'     => 'approved',
-    'rejected'     => 'rejected',
-    'paid'         => 'paid',
-    'closed'       => 'closed',
-];
+const CLAIM_TRANSITIONS = \Avic\Claims\Lifecycle::TRANSITIONS;
+const CLAIM_STATUS_WORDS = \Avic\Claims\Lifecycle::LABELS;
 
 /** Raised inside inTransaction() to roll back and answer with this HTTP status. */
 final class ApiAbort extends RuntimeException
@@ -33,7 +16,7 @@ final class ApiAbort extends RuntimeException
 function claimCanMove(string $from, string $to): bool
 {
     // Look up the allowed destinations for this starting state, then test membership.
-    return in_array($to, CLAIM_TRANSITIONS[$from] ?? [], true);
+    return \Avic\Claims\Lifecycle::permits($from, $to);
 }
 
 /** "approved", "waiting for documents", ... for use in "This claim is ___." */

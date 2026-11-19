@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+use Avic\Finance\ClaimAmount;
+require_once dirname(__DIR__, 2) . '/src/Finance/ClaimAmount.php';
+
 /** Policy locking serializes submissions and approvals that share one cover limit. */
 function policyLock(PDO $conn, int $policyId): array
 {
@@ -18,13 +21,13 @@ function validDate(string $value): bool
 }
 
 /** Reserve cover for approved claims, including paid/closed settlements. */
-function assertPolicyCoverage(PDO $conn, array $claim, float $amount): void
+function assertPolicyCoverage(PDO $conn, array $claim, string $amount): void
 {
     $policy = policyLock($conn, (int)$claim['policy_id']);
     if ($policy['status'] !== 'active' || (int)$policy['user_id'] !== (int)$claim['user_id']) {
         throw new ApiAbort('This claim needs an active policy belonging to its claimant.', 422);
     }
-    if (!is_finite($amount) || round($amount, 2) <= 0 || $amount > 9999999999.99) {
+    if (ClaimAmount::units($amount) === 0) {
         throw new ApiAbort('Set a positive amount within the supported currency range.', 422);
     }
     if ($claim['incident_date'] < $policy['start_date'] || $claim['incident_date'] > $policy['end_date']) {
@@ -33,14 +36,13 @@ function assertPolicyCoverage(PDO $conn, array $claim, float $amount): void
     if ($policy['coverage_type'] === 'basic' && in_array($claim['claim_type'], ['fire', 'theft', 'natural_disaster'], true)) {
         throw new ApiAbort('This peril is not covered under the basic tier of the policy.', 422);
     }
+    // Compare exact SQL decimals, including the aggregate across other claims.
     $query = $conn->prepare(
-        'SELECT COALESCE(SUM(approved_amount), 0) FROM claims
-         WHERE policy_id = ? AND id <> ? AND status IN ("approved", "paid", "closed")'
+        'SELECT COALESCE(SUM(approved_amount), 0) + CAST(? AS DECIMAL(12,2)) <= CAST(? AS DECIMAL(12,2))
+         FROM claims WHERE policy_id = ? AND id <> ? AND status IN ("approved", "paid", "closed")'
     );
-    $query->execute([$policy['id'], $claim['id']]);
-    $reserved = (int)round((float)$query->fetchColumn() * 100);
-    $limit = (int)round((float)$policy['coverage_limit'] * 100);
-    if ((int)round($amount * 100) + $reserved > $limit) {
+    $query->execute([$amount, $policy['coverage_limit'], $policy['id'], $claim['id']]);
+    if (!(bool)$query->fetchColumn()) {
         throw new ApiAbort('The amount exceeds the remaining cover limit on this policy.', 422);
     }
 }
